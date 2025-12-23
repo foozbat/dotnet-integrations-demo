@@ -5,6 +5,10 @@
     "$connections": {
       "type": "Object",
       "defaultValue": {}
+    },
+    "zapierWebhookUrl": {
+      "type": "String",
+      "defaultValue": ""
     }
   },
   "triggers": {
@@ -57,7 +61,7 @@
       "runAfter": {},
       "type": "Http",
       "inputs": {
-        "uri": "https://hooks.zapier.com/hooks/catch/25741920/ua9023q/",
+        "uri": "@parameters('zapierWebhookUrl')",
         "method": "POST",
         "body": "@triggerBody()"
       },
