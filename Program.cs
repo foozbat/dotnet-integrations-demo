@@ -79,3 +79,6 @@ app.MapGet("/api/leads", async (AzureSQLDbContext db) => await db.Leads.ToListAs
 .WithName("GetLeads");
 
 app.Run();
+
+// enable for unit tests
+public partial class Program { }
