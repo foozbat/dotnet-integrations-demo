@@ -16,7 +16,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Dotnet Integrations API", Description = "An Amazing Dotnet Integrations API", Version = "v1" });
 });
 
-// connect to azure sql database using connection string
+// connect to azure sql database using entra authentication
 builder.Services.AddDbContext<AzureSQLDbContext>(options =>
     options.UseSqlServer(connectionString, sqlOptions => 
         sqlOptions.EnableRetryOnFailure(
@@ -50,9 +50,6 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
     {
         return Results.BadRequest(new { Message = "Invalid email format." });
     }
-
-    lead.CreatedAt = DateTime.UtcNow;
-    lead.UpdatedAt = DateTime.UtcNow;
 
     // add correlation id to track request across services
     lead.CorrelationId = Guid.NewGuid().ToString();

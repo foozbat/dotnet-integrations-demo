@@ -8,20 +8,34 @@ public class AzureSQLDbContext : DbContext
 
     public DbSet<Lead> Leads { get; set; }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public override int SaveChanges()
     {
-        base.OnModelCreating(modelBuilder);
+        UpdateTimestamps();
+        return base.SaveChanges();
+    }
 
-        modelBuilder.Entity<Lead>(entity =>
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        UpdateTimestamps();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void UpdateTimestamps()
+    {
+        var entries = ChangeTracker.Entries<Lead>();
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in entries)
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.Phone).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.CorrelationId).HasMaxLength(100);
-            entity.HasIndex(e => e.CorrelationId);
-            entity.Property(e => e.CreatedAt).IsRequired();
-            entity.Property(e => e.UpdatedAt).IsRequired();
-        });
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = now;
+                entry.Entity.UpdatedAt = now;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = now;
+            }
+        }
     }
 }
