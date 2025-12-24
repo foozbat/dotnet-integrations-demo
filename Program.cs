@@ -16,7 +16,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Dotnet Integrations API", Description = "An Amazing Dotnet Integrations API", Version = "v1" });
 });
 
-// connect to azure sql database using entra authentication
+// connect to azure sql database using connection string
 builder.Services.AddDbContext<AzureSQLDbContext>(options =>
     options.UseSqlServer(connectionString, sqlOptions => 
         sqlOptions.EnableRetryOnFailure(
