@@ -1,3 +1,5 @@
+[![CI](https://github.com/foozbat/dotnet-integrations-demo/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/foozbat/dotnet-integrations-demo/actions/workflows/ci.yml)
+
 # .NET + Azure Logic Apps + HubSpot + Zapier Demo
 
 This project demonstrates a simple, real-world cloud integration using:
