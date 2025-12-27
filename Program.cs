@@ -3,6 +3,7 @@ using Microsoft.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using IntegrationsDemo;
 
+// Get environment variables
 DotEnv.Load();
 IDictionary<string, string> env = DotEnv.Read();
 var webhookUrl = env["AZURE_LOGIC_APP_URL"];
@@ -12,7 +13,8 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c => {
+builder.Services.AddSwaggerGen(c =>
+{
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Dotnet Integrations API", Description = "An Amazing Dotnet Integrations API", Version = "v1" });
 });
 
@@ -27,21 +29,27 @@ builder.Services.AddDbContext<AzureSQLDbContext>(options =>
 WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment()) {
+if (app.Environment.IsDevelopment())
+{
     _ = app.UseSwagger();
     _ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dotnet Integrations API v1"));
 }
 
 app.UseHttpsRedirection();
 
-app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Program> logger) => {
+// API Endpoint: POST /api/signup
+// Captures new lead information, validates data, stores in Azure SQL Database, and triggers Logic Apps workflow
+app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Program> logger) =>
+{
     // validation
-    if (string.IsNullOrEmpty(lead.FirstName) || string.IsNullOrEmpty(lead.LastName) || string.IsNullOrEmpty(lead.Email) || string.IsNullOrEmpty(lead.Phone)) {
+    if (string.IsNullOrEmpty(lead.FirstName) || string.IsNullOrEmpty(lead.LastName) || string.IsNullOrEmpty(lead.Email) || string.IsNullOrEmpty(lead.Phone))
+    {
         return Results.BadRequest(new { Message = "First Name, Last Name, Email, and Phone are required." });
     }
 
     // check for valid email
-    if (!MyRegex().IsMatch(lead.Email)) {
+    if (!MyRegex().IsMatch(lead.Email))
+    {
         return Results.BadRequest(new { Message = "Invalid email format." });
     }
 
@@ -53,7 +61,8 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
     _ = await db.SaveChangesAsync();
 
     // send webhook to Azure Logic Apps in the background
-    JsonWebhook webhook = new() {
+    JsonWebhook webhook = new()
+    {
         WebhookUrl = webhookUrl,
         CorrelationId = lead.CorrelationId,
         Timeout = TimeSpan.FromSeconds(30),
@@ -63,14 +72,24 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
 
     return Results.Ok(new { Message = "Signup successful." });
 })
-.WithName("SignUp");
+.WithName("SignUp")
+.WithSummary("Create a new lead signup")
+.WithDescription("Validates and stores a new lead in the database, then asynchronously sends the data to an Azure Logic Apps webhook for further processing.")
+.Produces(200)
+.Produces(400);
 
+// API Endpoint: GET /api/leads
+// Returns a list of all leads stored in the database.
 app.MapGet("/api/leads", async (AzureSQLDbContext db) => await db.Leads.ToListAsync())
-.WithName("GetLeads");
+.WithName("GetLeads")
+.WithSummary("Get all leads")
+.WithDescription("Returns a list of all leads stored in the database.")
+.Produces<List<Lead>>(200);
 
 app.Run();
 
-internal partial class Program {
+public partial class Program
+{
     [System.Text.RegularExpressions.GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase, "en-US")]
     private static partial System.Text.RegularExpressions.Regex MyRegex();
 }

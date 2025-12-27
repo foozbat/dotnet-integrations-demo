@@ -4,7 +4,8 @@ using System.Text.Json;
 /// <summary>
 /// Sends JSON data to a webhook URL via HTTP POST.
 /// </summary>
-internal sealed partial class JsonWebhook {
+internal sealed partial class JsonWebhook
+{
     /// <summary>
     /// Gets or sets the target webhook URL.
     /// </summary>
@@ -37,8 +38,10 @@ internal sealed partial class JsonWebhook {
     [LoggerMessage(Level = LogLevel.Error, Message = "Error sending webhook. CorrelationId: {correlationId}")]
     private static partial void LogWebhookError(ILogger logger, Exception ex, string? correlationId);
 
-    private void Log(Action<ILogger> logAction) {
-        if (Logger is not null) {
+    private void Log(Action<ILogger> logAction)
+    {
+        if (Logger is not null)
+        {
             logAction(Logger);
         }
     }
@@ -48,14 +51,17 @@ internal sealed partial class JsonWebhook {
     /// </summary>
     /// <param name="data">The object to serialize and send as JSON.</param>
     /// <returns>True if the request was successful (2xx status code), false otherwise.</returns>
-    public async Task<bool> SendAsync(object data) {
-        try {
+    public async Task<bool> SendAsync(object data)
+    {
+        try
+        {
             Log(logger => LogSendingWebhook(logger, WebhookUrl, CorrelationId));
 
             using HttpClient client = new();
             client.Timeout = Timeout;
 
-            if (!string.IsNullOrEmpty(CorrelationId)) {
+            if (!string.IsNullOrEmpty(CorrelationId))
+            {
                 client.DefaultRequestHeaders.Add("X-Correlation-ID", CorrelationId);
             }
 
@@ -67,16 +73,19 @@ internal sealed partial class JsonWebhook {
             StringContent content = new(json, Encoding.UTF8, "application/json");
             HttpResponseMessage response = await client.PostAsync(WebhookUrl, content);
 
-            if (response.IsSuccessStatusCode) {
+            if (response.IsSuccessStatusCode)
+            {
                 Log(logger => LogWebhookSuccess(logger, CorrelationId));
             }
-            else {
+            else
+            {
                 Log(logger => LogWebhookFailure(logger, response.StatusCode, CorrelationId));
             }
 
             return response.IsSuccessStatusCode;
         }
-        catch (Exception ex) {
+        catch (Exception ex)
+        {
             Log(logger => LogWebhookError(logger, ex, CorrelationId));
             return false;
         }
