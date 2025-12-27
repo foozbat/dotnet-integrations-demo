@@ -41,5 +41,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
+      - name: Restore Dependencies
+        run: dotnet restore
+
       - name: Run Tests
-        run: dotnet test --verbosity normal
+        run: dotnet test --no-restore --verbosity normal
