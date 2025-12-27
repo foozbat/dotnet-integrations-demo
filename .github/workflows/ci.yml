@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  lint:
+  lint-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -15,34 +15,8 @@ jobs:
       - name: Install Dependencies
         run: dotnet restore
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v3
-        with: 
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
       - name: Lint
         run: dotnet build --no-restore -warnaserror
 
-  test:
-    runs-on: ubuntu-latest
-    needs: lint
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Restore Cached NuGet packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      - name: Restore Dependencies
-        run: dotnet restore
-
       - name: Run Tests
-        run: dotnet test --no-restore --verbosity normal
+        run: dotnet test --verbosity normal
