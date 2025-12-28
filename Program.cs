@@ -1,7 +1,6 @@
 using dotenv.net;
 using Microsoft.OpenApi;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.SqlClient;
 using IntegrationsDemo;
 
 // Load .env file if it exists (local development)
