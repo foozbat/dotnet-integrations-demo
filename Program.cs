@@ -1,17 +1,17 @@
 using dotenv.net;
 using Microsoft.OpenApi;
 using Microsoft.EntityFrameworkCore;
-using IntegrationsDemo;
-using Azure.Identity;
-using Azure.Core;
 using Microsoft.Data.SqlClient;
+using IntegrationsDemo;
 
 // Load .env file if it exists (local development)
 DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true));
 
 // Get environment variables from .env file or Azure App Settings
 var webhookUrl = Environment.GetEnvironmentVariable("AZURE_LOGIC_APP_URL") ?? "";
-var connectionString = Environment.GetEnvironmentVariable("SQL_SERVER_CONNECTION_STRING") ?? "";
+var connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_SERVER_CONNECTION_STRING") ?? "";
+var sqlServerUrl = Environment.GetEnvironmentVariable("AZURE_SQL_SERVER_URL") ?? "";
+var databaseName = Environment.GetEnvironmentVariable("AZURE_SQL_DATABASE_NAME") ?? "";
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -28,29 +28,22 @@ builder.Services.AddDbContext<AzureSQLDbContext>(options =>
     // In production, use managed identity authentication
     if (builder.Environment.IsProduction())
     {
-        DefaultAzureCredential credential = new();
-        AccessToken token = credential.GetToken(new TokenRequestContext(["https://database.windows.net/.default"]));
-
         SqlConnectionStringBuilder sqlConnectionBuilder = new(connectionString)
         {
-            Authentication = SqlAuthenticationMethod.ActiveDirectoryManagedIdentity
+            DataSource = sqlServerUrl,
+            InitialCatalog = databaseName,
+            Authentication = SqlAuthenticationMethod.ActiveDirectoryDefault
         };
 
-        _ = options.UseSqlServer(sqlConnectionBuilder.ConnectionString, sqlOptions =>
-            sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null));
+        connectionString = sqlConnectionBuilder.ConnectionString;
     }
-    else
-    {
-        // In development, use connection string authentication
-        _ = options.UseSqlServer(connectionString, sqlOptions =>
-            sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null));
-    }
+
+    _ = options.UseSqlServer(connectionString, sqlOptions =>
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null));
+
 });
 
 WebApplication app = builder.Build();
