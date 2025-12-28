@@ -3,10 +3,9 @@ using Microsoft.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using IntegrationsDemo;
 
-// Load .env file if it exists (local development)
+// Load .env file if it exists
 DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true));
 
-// Get environment variables from .env file or Azure App Settings
 var webhookUrl = Environment.GetEnvironmentVariable("AZURE_LOGIC_APP_URL") ?? "";
 var connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTION_STRING") ?? "";
 
