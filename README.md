@@ -9,6 +9,9 @@ This project demonstrates a simple, real-world cloud integration using:
 - HubSpot CRM
 - Zapier Webhooks
 
+## Documentation
+Pending
+
 ## Goal
 
 When a user signs up via a .NET API endpoint:
@@ -23,26 +26,18 @@ When a user signs up via a .NET API endpoint:
 Client (Postman / Swagger)
 ↓
 ASP.NET Core API
-├── Save to Azure SQL DB
+├── Save Contact to Azure SQL DB
 └── Azure Logic App
      ├── HubSpot CRM
+     |   └── Create / Update Contact
+     |   └── Trigger Hubspot Workflow
+     |       └── Qualify Lead
+     |       └── Update ASP.NET Contact Property
      └── Zapier
          └── Email via Sendgrid
          └── SMS via Twilio
+         └── Notify via Slack
 ```
-
----
-
-## Flow Description
-
-1. A POST request is sent to `/api/signup`
-2. The API forwards the request to an Azure Logic App
-3. The Logic App:
-   - Creates or updates a HubSpot contact
-   - Sends a webhook to Zapier
-4. Zapier sends a notification (Slack / Email)
-
----
 
 ## Sample Request
 
