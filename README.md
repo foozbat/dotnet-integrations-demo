@@ -12,14 +12,6 @@ This project demonstrates a simple, real-world cloud integration using:
 ## Documentation
 Pending
 
-## Goal
-
-When a user signs up via a .NET API endpoint:
-1. The contact is created or updated in HubSpot
-2. A real-time notification is sent via Zapier
-
----
-
 ## Architecture Overview
 
 ```
