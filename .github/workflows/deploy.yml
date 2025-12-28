@@ -45,8 +45,7 @@ jobs:
           --name ${{ env.APP_NAME }} \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --settings \
-            AZURE_SQL_SERVER_URL="${{ vars.AZURE_SQL_SERVER_URL }}" \
-            AZURE_SQL_DATABASE_NAME="${{ vars.AZURE_SQL_DATABASE_NAME }}" \
+            AZURE_SQL_CONNECTION_STRING="${{ secrets.AZURE_SQL_CONNECTION_STRING }}" \
             AZURE_LOGIC_APP_URL="${{ vars.AZURE_LOGIC_APP_URL }}"
 
     - name: Deployment Summary

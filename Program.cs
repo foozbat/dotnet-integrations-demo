@@ -9,9 +9,7 @@ DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true));
 
 // Get environment variables from .env file or Azure App Settings
 var webhookUrl = Environment.GetEnvironmentVariable("AZURE_LOGIC_APP_URL") ?? "";
-var connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_SERVER_CONNECTION_STRING") ?? "";
-var sqlServerUrl = Environment.GetEnvironmentVariable("AZURE_SQL_SERVER_URL") ?? "";
-var databaseName = Environment.GetEnvironmentVariable("AZURE_SQL_DATABASE_NAME") ?? "";
+var connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTION_STRING") ?? "";
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -25,25 +23,11 @@ builder.Services.AddSwaggerGen(c =>
 // Configure database connection
 builder.Services.AddDbContext<AzureSQLDbContext>(options =>
 {
-    // In production, use managed identity authentication
-    if (builder.Environment.IsProduction())
-    {
-        SqlConnectionStringBuilder sqlConnectionBuilder = new(connectionString)
-        {
-            DataSource = sqlServerUrl,
-            InitialCatalog = databaseName,
-            Authentication = SqlAuthenticationMethod.ActiveDirectoryDefault
-        };
-
-        connectionString = sqlConnectionBuilder.ConnectionString;
-    }
-
     _ = options.UseSqlServer(connectionString, sqlOptions =>
         sqlOptions.EnableRetryOnFailure(
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(30),
             errorNumbersToAdd: null));
-
 });
 
 WebApplication app = builder.Build();
