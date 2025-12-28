@@ -37,7 +37,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Publish
-        run: dotnet publish --configuration Release --no-build --output ./publish
+        run: dotnet publish IntegrationsDemo.csproj --configuration Release --no-build --output ./publish
 
       - name: Create Release Artifact
         uses: actions/upload-artifact@v6
