@@ -2,6 +2,9 @@ using dotenv.net;
 using Microsoft.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using IntegrationsDemo;
+using Azure.Identity;
+using Azure.Core;
+using Microsoft.Data.SqlClient;
 
 // Load .env file if it exists (local development)
 DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true));
@@ -19,13 +22,36 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Dotnet Integrations API", Description = "An Amazing Dotnet Integrations API", Version = "v1" });
 });
 
-// connect to azure sql database using entra authentication
+// Configure database connection
 builder.Services.AddDbContext<AzureSQLDbContext>(options =>
-    options.UseSqlServer(connectionString, sqlOptions =>
-        sqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null)));
+{
+    // In production, use managed identity authentication
+    if (builder.Environment.IsProduction())
+    {
+        DefaultAzureCredential credential = new();
+        AccessToken token = credential.GetToken(new TokenRequestContext(["https://database.windows.net/.default"]));
+
+        SqlConnectionStringBuilder sqlConnectionBuilder = new(connectionString)
+        {
+            Authentication = SqlAuthenticationMethod.ActiveDirectoryManagedIdentity
+        };
+
+        _ = options.UseSqlServer(sqlConnectionBuilder.ConnectionString, sqlOptions =>
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null));
+    }
+    else
+    {
+        // In development, use connection string authentication
+        _ = options.UseSqlServer(connectionString, sqlOptions =>
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null));
+    }
+});
 
 WebApplication app = builder.Build();
 
