@@ -3,11 +3,12 @@ using Microsoft.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using IntegrationsDemo;
 
-// Get environment variables
-DotEnv.Load();
-IDictionary<string, string> env = DotEnv.Read();
-var webhookUrl = env["AZURE_LOGIC_APP_URL"];
-var connectionString = env["SQL_SERVER_CONNECTION_STRING"];
+// Load .env file if it exists (local development)
+DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true));
+
+// Get environment variables from .env file or Azure App Settings
+var webhookUrl = Environment.GetEnvironmentVariable("AZURE_LOGIC_APP_URL") ?? "";
+var connectionString = Environment.GetEnvironmentVariable("SQL_SERVER_CONNECTION_STRING") ?? "";
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -29,13 +30,15 @@ builder.Services.AddDbContext<AzureSQLDbContext>(options =>
 WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    _ = app.UseSwagger();
-    _ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dotnet Integrations API v1"));
-}
+_ = app.UseSwagger();
+_ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dotnet Integrations API v1"));
 
 app.UseHttpsRedirection();
+
+// Health check endpoint
+app.MapGet("/", () => Results.Ok(new { status = "healthy", message = "Dotnet Integrations API is running" }))
+.WithName("HealthCheck")
+.ExcludeFromDescription();
 
 // API Endpoint: POST /api/signup
 // Captures new lead information, validates data, stores in Azure SQL Database, and triggers Logic Apps workflow
