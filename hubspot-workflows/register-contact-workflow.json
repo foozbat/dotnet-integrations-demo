@@ -1,39 +1,33 @@
 {
+  "type": "CONTACT_FLOW",
+  "objectTypeId": "0-1",
+  "canEnrollFromSalesforce": false,
+  "isEnabled": true,
+  "flowType": "WORKFLOW",
   "name": "Register HubSpot Contact with Back-end",
-  "type": "CONTACT_WORKFLOW",
-  "onlyEnrollManually": false,
-  "enabled": true,
   "description": "Registers a new HubSpot contact with the back-end system when created",
-  "enrollmentCriteria": {
-    "filterBranches": [
-      {
-        "filterBranchType": "OR",
-        "filters": [
-          {
-            "filterType": "PROPERTY",
-            "property": "createdate",
-            "operation": {
-              "operationType": "IS_KNOWN"
-            }
-          }
-        ]
-      }
-    ],
-    "enrollmentEventType": "PROPERTY_CHANGE"
-  },
   "actions": [
     {
-      "actionType": "DELAY",
-      "delayMillis": 0
-    },
-    {
-      "actionType": "WEBHOOK",
+      "type": "WEBHOOK",
+      "actionId": "webhook-action-1",
       "url": "{{WEBHOOK_URL}}",
       "method": "POST",
       "headers": {
         "Content-Type": "application/json"
       },
-      "body": "{\"message\": \"Hello World from HubSpot!\", \"contact\": {\"email\": \"{{contact.email}}\", \"firstname\": \"{{contact.firstname}}\", \"lastname\": \"{{contact.lastname}}\", \"createdate\": \"{{contact.createdate}}\"}}"
+      "body": "{\"external_contact_id\": \"{{contact.id}}\", \"hubspot_contact_id\": \"{{contact.id}}\", \"email\": \"{{contact.email}}\", \"firstname\": \"{{contact.firstname}}\", \"lastname\": \"{{contact.lastname}}\"}"
     }
-  ]
+  ],
+  "timeWindows": [],
+  "blockedDates": [],
+  "customProperties": {},
+  "dataSources": [],
+  "suppressionListIds": [],
+  "enrollmentCriteria": {
+    "type": "EVENT_BASED",
+    "eventAnchor": {
+      "type": "CONTACT_PROPERTY_ANCHOR",
+      "contactProperty": "createdate"
+    }
+  }
 }
