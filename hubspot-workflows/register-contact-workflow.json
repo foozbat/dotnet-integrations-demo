@@ -10,7 +10,7 @@
     {
       "type": "WEBHOOK",
       "actionId": "webhook-action-1",
-      "url": "{{WEBHOOK_URL}}",
+      "webhookUrl": "{{WEBHOOK_URL}}",
       "method": "POST",
       "headers": {
         "Content-Type": "application/json"
