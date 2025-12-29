@@ -6,6 +6,7 @@
   "flowType": "WORKFLOW",
   "name": "Register HubSpot Contact with Back-end",
   "description": "Registers a new HubSpot contact with the back-end system when created",
+  "startActionId": "webhook-action-1",
   "actions": [
     {
       "type": "WEBHOOK",
