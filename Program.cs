@@ -36,12 +36,16 @@ _ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dotnet 
 
 app.UseHttpsRedirection();
 
+// -------------
+// API ENDPOINTS
+// -------------
+
 // Health check endpoint
 app.MapGet("/", () => Results.Ok(new { status = "healthy", message = "Dotnet Integrations API is running" }))
 .WithName("HealthCheck")
 .ExcludeFromDescription();
 
-// API Endpoint: POST /api/signup
+// Endpoint: POST /api/signup
 // Captures new lead information, validates data, stores in Azure SQL Database, and triggers Logic Apps workflow
 app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Program> logger) =>
 {
@@ -57,9 +61,6 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
         return Results.BadRequest(new { Message = "Invalid email format." });
     }
 
-    // add correlation id to track request across services
-    lead.CorrelationId = Guid.NewGuid().ToString();
-
     // save to db
     _ = db.Leads.Add(lead);
     _ = await db.SaveChangesAsync();
@@ -68,7 +69,7 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
     JsonWebhook webhook = new()
     {
         WebhookUrl = webhookUrl,
-        CorrelationId = lead.CorrelationId,
+        CorrelationId = Guid.NewGuid().ToString(),
         Timeout = TimeSpan.FromSeconds(30),
         Logger = logger
     };
@@ -82,13 +83,47 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
 .Produces(200)
 .Produces(400);
 
-// API Endpoint: GET /api/leads
+// Endpoint: GET /api/leads
 // Returns a list of all leads stored in the database.
 app.MapGet("/api/leads", async (AzureSQLDbContext db) => await db.Leads.ToListAsync())
 .WithName("GetLeads")
 .WithSummary("Get all leads")
 .WithDescription("Returns a list of all leads stored in the database.")
 .Produces<List<Lead>>(200);
+
+// -----------------
+// WEBHOOK ENDPOINTS
+// -----------------
+
+// Endpoint: POST /webhooks/hubspot/registerContact
+// Receives HubSpot contact registration data and updates the corresponding lead in the database.
+app.MapPost("/webhooks/hubspot/updateContactId", async (AzureSQLDbContext db, HubspotContactRecord hubspotData, ILogger<Program> logger) =>
+{
+    // update the lead with a HubspotContactId if it exists based on external_contact_id => ContactId mapping
+    if (string.IsNullOrEmpty(hubspotData.ExternalContactId) || string.IsNullOrEmpty(hubspotData.HubspotContactId))
+    {
+        return Results.BadRequest(new { Message = "ExternalContactId and HubspotContactId are required." });
+    }
+
+    Lead? lead = await db.Leads.FirstOrDefaultAsync(l => l.ContactId == hubspotData.ExternalContactId);
+
+    if (lead == null)
+    {
+        return Results.NotFound(new { Message = "Lead not found with the specified ContactId." });
+    }
+
+    lead.HubspotContactId = hubspotData.HubspotContactId;
+    lead.UpdatedAt = DateTime.UtcNow;
+    _ = await db.SaveChangesAsync();
+
+    return Results.Ok(new { Message = "Hubspot contact registered.", lead.Id, lead.ContactId });
+})
+.WithName("UpdateHubspotContactId")
+.WithSummary("Update HubSpot Contact ID for a lead")
+.WithDescription("Updates a lead with their HubSpot contact ID using the external contact ID for mapping.")
+.Produces(200)
+.Produces(400)
+.Produces(404);
 
 app.Run();
 

@@ -8,4 +8,5 @@ dotnet_style_predefined_type_for_locals_parameters_members = true:warning
 csharp_style_var_for_built_in_types = true:suggestion
 dotnet_diagnostic.CA1873.severity = none
 dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1050.severity = none
 csharp_style_namespace_declarations = file_scoped:warning
