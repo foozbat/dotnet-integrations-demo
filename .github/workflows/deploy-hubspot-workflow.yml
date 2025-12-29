@@ -28,7 +28,7 @@ jobs:
         
         # Create or update the workflow via HubSpot API
         RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-          "https://api.hubapi.com/automation/v4/workflows" \
+          "https://api.hubapi.com/automation/v4/flows" \
           -H "Authorization: Bearer ${{ secrets.HUBSPOT_ACCESS_TOKEN }}" \
           -H "Content-Type: application/json" \
           -d "$WORKFLOW_JSON")
