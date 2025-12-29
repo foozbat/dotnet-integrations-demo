@@ -1,0 +1,39 @@
+{
+  "name": "Register HubSpot Contact with Back-end",
+  "type": "CONTACT_WORKFLOW",
+  "onlyEnrollManually": false,
+  "enabled": true,
+  "description": "Registers a new HubSpot contact with the back-end system when created",
+  "enrollmentCriteria": {
+    "filterBranches": [
+      {
+        "filterBranchType": "OR",
+        "filters": [
+          {
+            "filterType": "PROPERTY",
+            "property": "createdate",
+            "operation": {
+              "operationType": "IS_KNOWN"
+            }
+          }
+        ]
+      }
+    ],
+    "enrollmentEventType": "PROPERTY_CHANGE"
+  },
+  "actions": [
+    {
+      "actionType": "DELAY",
+      "delayMillis": 0
+    },
+    {
+      "actionType": "WEBHOOK",
+      "url": "{{WEBHOOK_URL}}",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"message\": \"Hello World from HubSpot!\", \"contact\": {\"email\": \"{{contact.email}}\", \"firstname\": \"{{contact.firstname}}\", \"lastname\": \"{{contact.lastname}}\", \"createdate\": \"{{contact.createdate}}\"}}"
+    }
+  ]
+}
