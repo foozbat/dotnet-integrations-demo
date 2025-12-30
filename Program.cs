@@ -81,6 +81,13 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
         return Results.BadRequest(new { Message = "Invalid email format." });
     }
 
+    // check for duplicate email
+    var emailExists = await db.Leads.AnyAsync(l => l.Email == lead.Email);
+    if (emailExists)
+    {
+        return Results.BadRequest(new { Message = "A lead with this email already exists." });
+    }
+
     // save to db
     _ = db.Leads.Add(lead);
     _ = await db.SaveChangesAsync();
