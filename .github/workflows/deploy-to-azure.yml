@@ -50,7 +50,8 @@ jobs:
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --settings \
             AZURE_SQL_CONNECTION_STRING='${{ secrets.AZURE_SQL_CONNECTION_STRING }}' \
-            AZURE_LOGIC_APP_URL='${{ vars.AZURE_LOGIC_APP_URL }}'
+            AZURE_LOGIC_APP_URL='${{ vars.AZURE_LOGIC_APP_URL }}' \
+            STRIPE_WEBHOOK_SECRET='${{ secrets.STRIPE_WEBHOOK_SECRET }}'
 
     - name: Deployment Summary
       run: |

@@ -1,3 +1,12 @@
+/**
+ * Dotnet Integrations Demo API
+ *
+ * written by: Aaron Bishop
+ * description: A sample .NET 7 Web API demonstrating integrations with Azure Logic Apps, HubSpot, Stripe, and Azure SQL Database.
+ * 
+ * Refer to the README.md for detailed project information.
+ */
+
 using dotenv.net;
 using Microsoft.OpenApi;
 using Microsoft.EntityFrameworkCore;
@@ -60,9 +69,9 @@ app.Use(async (context, next) =>
 
 app.UseHttpsRedirection();
 
-// -------------
-// API ENDPOINTS
-// -------------
+/**
+ * API ENDPOINTS
+ */
 
 // Health check endpoint
 app.MapGet("/", () => Results.Ok(new { status = "healthy", message = "Dotnet Integrations API is running" }))
@@ -122,9 +131,9 @@ app.MapGet("/api/leads", async (AzureSQLDbContext db) => await db.Leads.ToListAs
 .WithDescription("Returns a list of all leads stored in the database.")
 .Produces<List<Lead>>(200);
 
-// -----------------
-// WEBHOOK ENDPOINTS
-// -----------------
+/**
+ * WEBHOOK ENDPOINTS
+ */
 
 // Endpoint: POST /webhooks/hubspot
 // Receives HubSpot contact registration data and updates the corresponding lead in the database.
@@ -247,6 +256,38 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
 .Produces(400)
 .Produces(404);
 
+/**
+ * Stripe redirect endpoints for testing purposes
+ * Implement in a real front-end
+ */
+
+// Endpoint: GET /payment-success
+// Payment success page
+app.MapGet("/payment-success", () => Results.Content("""
+    <html>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1>Payment Successful!</h1>
+            <p>Thank you for your payment. You will receive a confirmation email shortly.</p>
+        </body>
+    </html>
+    """, "text/html"))
+.WithName("PaymentSuccess")
+.ExcludeFromDescription();
+
+// Endpoint: GET /payment-cancelled
+// Payment cancelled page  
+app.MapGet("/payment-cancelled", () => Results.Content("""
+    <html>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1>Payment Cancelled</h1>
+            <p>Your payment was cancelled. No charges were made.</p>
+        </body>
+    </html>
+    """, "text/html"))
+.WithName("PaymentCancelled")
+.ExcludeFromDescription();
+
+// Run the application
 app.Run();
 
 public partial class Program
