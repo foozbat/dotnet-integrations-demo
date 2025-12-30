@@ -16,7 +16,7 @@
       "headers": {
         "Content-Type": "application/json"
       },
-      "body": "{\"external_contact_id\": \"{{contact.external_contact_id}}\", \"hubspot_contact_id\": \"{{contact.hs_object_id}}\"}"
+      "body": "{\"externalContactId\": \"{{contact.external_contact_id}}\", \"hubspotContactId\": \"{{contact.id}}\"}"
     }
   ],
   "timeWindows": [],
