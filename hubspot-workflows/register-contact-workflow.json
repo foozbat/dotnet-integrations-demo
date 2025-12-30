@@ -1,37 +1,55 @@
 {
   "type": "CONTACT_FLOW",
-  "name": "Contact Created → Webhook",
   "objectTypeId": "0-1",
-  "flowType": "WORKFLOW",
+  "canEnrollFromSalesforce": false,
   "isEnabled": true,
+  "flowType": "WORKFLOW",
+  "name": "Contact Created → Update Backend",
+  "description": "Sends contact data to backend when a new contact is created",
   "startActionId": "1",
-  "nextAvailableActionId": "2",
+  "actions": [
+    {
+      "type": "WEBHOOK",
+      "actionId": "1",
+      "webhookUrl": "{{WEBHOOK_URL}}",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"external_contact_id\": \"{{contact.external_contact_id}}\", \"hubspot_contact_id\": \"{{contact.hs_object_id}}\"}"
+    }
+  ],
+  "timeWindows": [],
+  "blockedDates": [],
+  "customProperties": {},
+  "dataSources": [],
+  "suppressionListIds": [],
   "enrollmentCriteria": {
+    "shouldReEnroll": false,
     "type": "LIST_BASED",
     "listFilterBranch": {
       "filterBranches": [
         {
+          "filterBranches": [],
           "filters": [
             {
-              "propertyName": "createdate",
-              "operator": "HAS_PROPERTY"
+              "property": "createdate",
+              "operation": {
+                "operationType": "ALL_PROPERTY",
+                "operator": "IS_KNOWN"
+              },
+              "filterType": "PROPERTY"
             }
-          ]
+          ],
+          "filterBranchType": "AND",
+          "filterBranchOperator": "AND"
         }
-      ]
-    }
-  },
-  "actions": [
-    {
-      "actionId": "1",
-      "type": "ACTION",
-      "actionTypeId": "webhook",
-      "actionFields": {
-        "url": "{{WEBHOOK_URL}}",
-        "method": "POST",
-        "body": "{ \"external_contact_id\": \"{{contact.id}}\", \"hubspot_contact_id\": \"{{contact.id}}\", \"email\": \"{{contact.email}}\", \"firstname\": \"{{contact.firstname}}\", \"lastname\": \"{{contact.lastname}}\" }",
-        "headers": "{\"Content-Type\":\"application/json\"}"
-      }
-    }
-  ]
+      ],
+      "filters": [],
+      "filterBranchType": "OR",
+      "filterBranchOperator": "OR"
+    },
+    "unEnrollObjectsNotMeetingCriteria": false,
+    "reEnrollmentTriggersFilterBranches": []
+  }
 }
