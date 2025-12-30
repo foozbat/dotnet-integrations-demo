@@ -103,19 +103,19 @@ app.MapPost("/webhooks/hubspot/updateContactId", async (AzureSQLDbContext db, Hu
     logger.LogInformation("Received HubSpot contact update webhook: {@hubspotData}", hubspotData);
 
     // update the lead with a HubspotContactId if it exists based on external_contact_id => ContactId mapping
-    if (string.IsNullOrEmpty(hubspotData.ExternalContactId) || string.IsNullOrEmpty(hubspotData.HubspotContactId))
+    if (string.IsNullOrEmpty(hubspotData.external_contact_id) || string.IsNullOrEmpty(hubspotData.hs_object_id))
     {
         return Results.BadRequest(new { Message = "ExternalContactId and HubspotContactId are required." });
     }
 
-    Lead? lead = await db.Leads.FirstOrDefaultAsync(l => l.ContactId == hubspotData.ExternalContactId);
+    Lead? lead = await db.Leads.FirstOrDefaultAsync(l => l.ContactId == hubspotData.external_contact_id);
 
     if (lead == null)
     {
         return Results.NotFound(new { Message = "Lead not found with the specified ContactId." });
     }
 
-    lead.HubspotContactId = hubspotData.HubspotContactId;
+    lead.HubspotContactId = hubspotData.hs_object_id;
     lead.UpdatedAt = DateTime.UtcNow;
     _ = await db.SaveChangesAsync();
 

@@ -1,6 +1,8 @@
 namespace IntegrationsDemo;
 
 public record HubspotContactRecord(
-    string ExternalContactId,
-    string HubspotContactId
+#pragma warning disable IDE1006 // Naming Styles
+    string hs_object_id,
+    string external_contact_id
+#pragma warning restore IDE1006 // Naming Styles
 );
