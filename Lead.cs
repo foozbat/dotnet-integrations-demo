@@ -28,8 +28,7 @@ public class Lead
     [MaxLength(100)]
     public string? ContactId { get; set; } = Guid.NewGuid().ToString();
 
-    [MaxLength(100)]
-    public string? HubspotContactId { get; set; }
+    public long? HubspotContactId { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

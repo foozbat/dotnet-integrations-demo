@@ -135,7 +135,7 @@ app.MapPost("/webhooks/hubspot/updateContactId", async (AzureSQLDbContext db, Hu
         return Results.NotFound(new { Message = "Lead not found with the specified ContactId." });
     }
 
-    lead.HubspotContactId = hubspotData.HubspotContactId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    lead.HubspotContactId = hubspotData.HubspotContactId;
     lead.UpdatedAt = DateTime.UtcNow;
     _ = await db.SaveChangesAsync();
 
