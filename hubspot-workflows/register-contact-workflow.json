@@ -1,34 +1,35 @@
 {
-  "type": "CONTACT_FLOW",
-  "objectTypeId": "0-1",
-  "canEnrollFromSalesforce": false,
-  "isEnabled": true,
-  "flowType": "WORKFLOW",
-  "name": "Register HubSpot Contact with Back-end",
-  "description": "Registers a new HubSpot contact with the back-end system when created",
-  "startActionId": "webhook-action-1",
-  "actions": [
-    {
-      "type": "WEBHOOK",
-      "actionId": "webhook-action-1",
-      "webhookUrl": "{{WEBHOOK_URL}}",
-      "method": "POST",
-      "headers": {
-        "Content-Type": "application/json"
-      },
-      "body": "{\"external_contact_id\": \"{{contact.id}}\", \"hubspot_contact_id\": \"{{contact.id}}\", \"email\": \"{{contact.email}}\", \"firstname\": \"{{contact.firstname}}\", \"lastname\": \"{{contact.lastname}}\"}"
-    }
-  ],
-  "timeWindows": [],
-  "blockedDates": [],
-  "customProperties": {},
-  "dataSources": [],
-  "suppressionListIds": [],
-  "enrollmentCriteria": {
-    "type": "EVENT_BASED",
-    "eventAnchor": {
-      "type": "CONTACT_PROPERTY_ANCHOR",
-      "contactProperty": "createdate"
-    }
+    "type": "CONTACT_FLOW",
+    "objectTypeId": "0-1",
+    "name": "Contact Created → Webhook",
+    "isEnabled": true,
+    "flowType": "WORKFLOW",
+    "startActionId": "1",
+    "nextAvailableActionId": "3",
+    "enrollmentCriteria": {
+      "eventBased": {
+        "events": [
+          {
+            "type": "OBJECT_CREATED",
+            "objectType": "CONTACT"
+          }
+        ]
+      }
+    },
+    "actions": [
+      {
+        "actionId": "1",
+        "type": "WEBHOOK",
+        "method": "POST",
+        "webhookUrl": "{{WEBHOOK_URL}}",
+        "queryParams": [],
+        "authSettings": {
+          "type": "NONE"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"external_contact_id\": \"{{contact.id}}\", \"hubspot_contact_id\": \"{{contact.id}}\", \"email\": \"{{contact.email}}\", \"firstname\": \"{{contact.firstname}}\", \"lastname\": \"{{contact.lastname}}\"}"
+      }
+    ]
   }
-}
