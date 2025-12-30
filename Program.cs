@@ -34,6 +34,26 @@ WebApplication app = builder.Build();
 _ = app.UseSwagger();
 _ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dotnet Integrations API v1"));
 
+// Middleware to log raw request bodies
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "POST" || context.Request.Method == "PUT" || context.Request.Method == "PATCH")
+    {
+        context.Request.EnableBuffering();
+
+        using StreamReader reader = new(context.Request.Body, leaveOpen: true);
+        var body = await reader.ReadToEndAsync();
+        context.Request.Body.Position = 0;
+
+        ILogger<Program> logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation("Raw request to {Method} {Path}: {Body}", 
+            context.Request.Method, 
+            context.Request.Path, 
+            body);
+    }
+    await next();
+});
+
 app.UseHttpsRedirection();
 
 // -------------
