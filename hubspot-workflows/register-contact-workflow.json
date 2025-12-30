@@ -1,35 +1,35 @@
 {
-    "type": "CONTACT_FLOW",
-    "objectTypeId": "0-1",
-    "name": "Contact Created → Webhook",
-    "isEnabled": true,
-    "flowType": "WORKFLOW",
-    "startActionId": "1",
-    "nextAvailableActionId": "3",
-    "enrollmentCriteria": {
-      "eventBased": {
-        "events": [
-          {
-            "type": "OBJECT_CREATED",
-            "objectType": "CONTACT"
-          }
-        ]
-      }
-    },
-    "actions": [
-      {
-        "actionId": "1",
-        "type": "WEBHOOK",
+  "type": "CONTACT_FLOW",
+  "name": "Contact Created → Webhook",
+  "objectTypeId": "0-1",
+  "flowType": "WORKFLOW",
+  "isEnabled": true,
+  "startActionId": "1",
+  "nextAvailableActionId": "2",
+  "enrollmentCriteria": {
+    "filterBranch": {
+      "filterBranches": [
+        {
+          "filters": [
+            {
+              "propertyName": "createdate",
+              "operator": "HAS_PROPERTY"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "actionId": "1",
+      "actionTypeId": "webhook",
+      "actionFields": {
+        "url": "{{WEBHOOK_URL}}",
         "method": "POST",
-        "webhookUrl": "{{WEBHOOK_URL}}",
-        "queryParams": [],
-        "authSettings": {
-          "type": "NONE"
-        },
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "body": "{\"external_contact_id\": \"{{contact.id}}\", \"hubspot_contact_id\": \"{{contact.id}}\", \"email\": \"{{contact.email}}\", \"firstname\": \"{{contact.firstname}}\", \"lastname\": \"{{contact.lastname}}\"}"
+        "body": "{ \"external_contact_id\": \"{{contact.id}}\", \"hubspot_contact_id\": \"{{contact.id}}\", \"email\": \"{{contact.email}}\", \"firstname\": \"{{contact.firstname}}\", \"lastname\": \"{{contact.lastname}}\" }",
+        "headers": "{\"Content-Type\":\"application/json\"}"
       }
-    ]
-  }
+    }
+  ]
+}
