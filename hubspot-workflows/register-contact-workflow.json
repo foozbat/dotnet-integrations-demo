@@ -8,7 +8,7 @@
   "nextAvailableActionId": "2",
   "enrollmentCriteria": {
     "type": "LIST_BASED",
-    "filterBranch": {
+    "listFilterBranch": {
       "filterBranches": [
         {
           "filters": [
