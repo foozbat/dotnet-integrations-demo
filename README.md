@@ -44,7 +44,7 @@ Client (Postman / Swagger)
              └── Slack Notification
 ```
 
-### Workflow Visualizations
+### Workflow Visualizations (click to expand graphics)
 
 <details>
 <summary>Azure Resources</summary>
