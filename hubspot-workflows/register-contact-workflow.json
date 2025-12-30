@@ -23,6 +23,7 @@
   "actions": [
     {
       "actionId": "1",
+      "type": "ACTION",
       "actionTypeId": "webhook",
       "actionFields": {
         "url": "{{WEBHOOK_URL}}",
