@@ -9,15 +9,15 @@ A real-world cloud integration platform demonstrating modern API-first architect
 ## 🛠️ Tech Stack
 
 ### Backend
-- **.NET 10** - ASP.NET Core Web API with minimal APIs
-- **Entity Framework Core 10** - ORM for database access with retry logic
-- **Azure SQL Database** - Cloud-native relational database
-- **Swagger/OpenAPI** - Interactive API documentation
+- **.NET 10** - ASP.NET Core Web API with minimal APIs.
+- **Swagger/OpenAPI** - Interactive API documentation.
+- **Entity Framework Core 10**
+- **Azure SQL Database**
 
 ### Integration & Automation
-- **Azure Logic Apps** - Serverless workflow orchestration
-- **HubSpot CRM** - Contact management and marketing automation
-- **Zapier** - Multi-channel notification workflows
+- **Azure Logic Apps** - For serverless workflow orchestration between API and integrations.
+- **HubSpot CRM**
+- **Zapier**
   - SendGrid for email
   - Twilio for SMS
   - Slack for team notifications
