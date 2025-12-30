@@ -2,12 +2,14 @@ using dotenv.net;
 using Microsoft.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using IntegrationsDemo;
+using Stripe.Checkout;
 
 // Load .env file if it exists
 DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true));
 
 var webhookUrl = Environment.GetEnvironmentVariable("AZURE_LOGIC_APP_URL") ?? "";
 var connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTION_STRING") ?? "";
+var stripeWebhookSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET") ?? "";
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -124,9 +126,9 @@ app.MapGet("/api/leads", async (AzureSQLDbContext db) => await db.Leads.ToListAs
 // WEBHOOK ENDPOINTS
 // -----------------
 
-// Endpoint: POST /webhooks/hubspot/registerContact
+// Endpoint: POST /webhooks/hubspot
 // Receives HubSpot contact registration data and updates the corresponding lead in the database.
-app.MapPost("/webhooks/hubspot/updateContactId", async (AzureSQLDbContext db, HubspotContactRecord hubspotData, ILogger<Program> logger) =>
+app.MapPost("/webhooks/hubspot", async (AzureSQLDbContext db, HubspotWebhookEvent hubspotData, ILogger<Program> logger) =>
 {
     // LOG THE RAW JSON RECEIVED
     logger.LogInformation("Received HubSpot contact update webhook: {@hubspotData}", hubspotData);
@@ -153,6 +155,94 @@ app.MapPost("/webhooks/hubspot/updateContactId", async (AzureSQLDbContext db, Hu
 .WithName("UpdateHubspotContactId")
 .WithSummary("Update HubSpot Contact ID for a lead")
 .WithDescription("Updates a lead with their HubSpot contact ID using the external contact ID for mapping.")
+.Produces(200)
+.Produces(400)
+.Produces(404);
+
+// Endpoint: POST /webhooks/stripe
+// Receives Stripe webhook events when a checkout session is completed
+app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db, ILogger<Program> logger) =>
+{
+    // Read raw body for signature verification
+    using StreamReader reader = new(context.Request.Body);
+    var json = await reader.ReadToEndAsync();
+
+    // Verify webhook signature
+    var signatureHeader = context.Request.Headers["Stripe-Signature"].ToString();
+
+    Stripe.Event? stripeEvent = null;
+
+    if (string.IsNullOrEmpty(stripeWebhookSecret))
+    {
+        logger.LogWarning("STRIPE_WEBHOOK_SECRET not configured, skipping signature verification");
+        // Parse without verification in dev/testing
+        stripeEvent = Stripe.EventUtility.ParseEvent(json);
+    }
+    else if (string.IsNullOrEmpty(signatureHeader))
+    {
+        logger.LogWarning("Missing Stripe-Signature header");
+        return Results.BadRequest(new { Message = "Missing signature header." });
+    }
+    else
+    {
+        try
+        {
+            stripeEvent = Stripe.EventUtility.ConstructEvent(json, signatureHeader, stripeWebhookSecret);
+            logger.LogInformation("Webhook signature verified successfully");
+        }
+        catch (Stripe.StripeException e)
+        {
+            logger.LogError(e, "Webhook signature verification failed");
+            return Results.BadRequest(new { Message = "Invalid signature." });
+        }
+    }
+
+    if (stripeEvent == null)
+    {
+        return Results.BadRequest(new { Message = "Failed to parse Stripe event." });
+    }
+
+    logger.LogInformation("Received Stripe webhook: {EventType} {EventId}", stripeEvent.Type, stripeEvent.Id);
+
+    // Ignore non-checkout completed events
+    if (stripeEvent.Type != "checkout.session.completed")
+    {
+        logger.LogWarning("Ignoring Stripe event type: {EventType}", stripeEvent.Type);
+        return Results.Ok(new { Message = "Event type not handled." });
+    }
+
+    if (stripeEvent.Data.Object is not Session session)
+    {
+        return Results.BadRequest(new { Message = "Invalid checkout session data." });
+    }
+
+    var customerId = session.CustomerId;
+    var customerEmail = session.CustomerDetails?.Email;
+
+    if (string.IsNullOrEmpty(customerId) || string.IsNullOrEmpty(customerEmail))
+    {
+        return Results.BadRequest(new { Message = "Customer ID and email are required." });
+    }
+
+    Lead? lead = await db.Leads.FirstOrDefaultAsync(l => l.Email == customerEmail);
+    if (lead == null)
+    {
+        return Results.NotFound(new { Message = "Lead not found with the specified email." });
+    }
+
+    // Update lead with Stripe customer info
+    lead.StripeCustomerId = customerId;
+    lead.SubscriptionStatus = session.Status ?? "complete";
+    lead.UpdatedAt = DateTime.UtcNow;
+    _ = await db.SaveChangesAsync();
+
+    logger.LogInformation("Updated lead {LeadId} with Stripe customer {CustomerId}", lead.Id, customerId);
+
+    return Results.Ok(new { Message = "Payment processed successfully.", lead.Id, lead.StripeCustomerId });
+})
+.WithName("StripeCheckoutCompleted")
+.WithSummary("Handle Stripe checkout completion")
+.WithDescription("Receives Stripe webhook when a checkout session completes and updates the lead with customer ID.")
 .Produces(200)
 .Produces(400)
 .Produces(404);

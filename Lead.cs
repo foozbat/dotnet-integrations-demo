@@ -30,6 +30,15 @@ public class Lead
 
     public long? HubspotContactId { get; set; }
 
+    [MaxLength(100)]
+    public string? StripeCustomerId { get; set; }
+
+    [MaxLength(50)]
+    public string? Plan { get; set; }
+
+    [MaxLength(50)]
+    public string? SubscriptionStatus { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
