@@ -1,0 +1,283 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "logicAppName": {
+            "type": "String",
+            "metadata": {
+                "description": "Name of the Logic App"
+            }
+        },
+        "location": {
+            "type": "String",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for the Logic App"
+            }
+        },
+        "keyVaultName": {
+            "type": "String",
+            "metadata": {
+                "description": "Name of the Key Vault containing secrets"
+            }
+        },
+        "zapierWebhookUrl": {
+            "type": "String",
+            "metadata": {
+                "description": "Zapier webhook URL (optional, can also be stored in Key Vault)"
+            },
+            "defaultValue": ""
+        }
+    },
+    "variables": {
+        "keyVaultConnectionName": "keyvault",
+        "useKeyVaultForZapier": "[empty(parameters('zapierWebhookUrl'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('logicAppName')]",
+            "location": "[parameters('location')]",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "When_an_HTTP_request_is_received": {
+                            "type": "Request",
+                            "kind": "Http"
+                        }
+                    },
+                    "actions": {
+                        "Trigger_Zappier_Webhook_(HTTP)": {
+                            "runAfter": {
+                                "Get_Zapier_Webhook_URL": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Http",
+                            "inputs": {
+                                "uri": "@{if(variables('useKeyVaultForZapier'), body('Get_Zapier_Webhook_URL')?['value'], parameters('zapierWebhookUrl'))}?correlationId=@{variables('correlationId')}",
+                                "method": "POST",
+                                "body": "@triggerBody()"
+                            },
+                            "runtimeConfiguration": {
+                                "contentTransfer": {
+                                    "transferMode": "Chunked"
+                                }
+                            }
+                        },
+                        "Parse_JSON": {
+                            "runAfter": {
+                                "Track_Correlation_ID": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "ParseJson",
+                            "inputs": {
+                                "content": "@triggerBody()",
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "firstName": {
+                                            "type": "string"
+                                        },
+                                        "lastName": {
+                                            "type": "string"
+                                        },
+                                        "email": {
+                                            "type": "string"
+                                        },
+                                        "phone": {
+                                            "type": "string"
+                                        },
+                                        "contactId": {
+                                            "type": "string"
+                                        },
+                                        "hubspotContactId": {
+                                            "type": "string"
+                                        },
+                                        "createdAt": {
+                                            "type": "string"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "Compose": {
+                            "runAfter": {
+                                "Parse_JSON": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Compose",
+                            "inputs": {
+                                "properties": {
+                                    "firstname": "@{body('Parse_JSON')?['firstName']}",
+                                    "lastname": "@{body('Parse_JSON')?['lastName']}",
+                                    "email": "@{body('Parse_JSON')?['email']}",
+                                    "phone": "@{body('Parse_JSON')?['phone']}",
+                                    "external_contact_id": "@body('Parse_JSON')?['contactId']"
+                                }
+                            }
+                        },
+                        "Track_Correlation_ID": {
+                            "runAfter": {},
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "correlationId",
+                                        "type": "string",
+                                        "value": "@{triggerOutputs()?['headers']?['x-correlation-id']}"
+                                    }
+                                ]
+                            }
+                        },
+                        "Get_Zapier_Webhook_URL": {
+                            "runAfter": {
+                                "If_Contact_is_not_in_HubSpot": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['keyvault']['connectionId']"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "/secrets/@{encodeURIComponent('zapier-webhook-url')}/value"
+                            },
+                            "runtimeConfiguration": {
+                                "secureData": {
+                                    "properties": [
+                                        "inputs",
+                                        "outputs"
+                                    ]
+                                }
+                            }
+                        },
+                        "If_Contact_is_not_in_HubSpot": {
+                            "actions": {
+                                "Get_HubSpot_Access_Token": {
+                                    "type": "ApiConnection",
+                                    "inputs": {
+                                        "host": {
+                                            "connection": {
+                                                "name": "@parameters('$connections')['keyvault']['connectionId']"
+                                            }
+                                        },
+                                        "method": "get",
+                                        "path": "/secrets/@{encodeURIComponent('hubspot-api-access-token')}/value"
+                                    },
+                                    "runtimeConfiguration": {
+                                        "secureData": {
+                                            "properties": [
+                                                "inputs",
+                                                "outputs"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "Create_Hubspot_Contact_(HTTP_REST)": {
+                                    "runAfter": {
+                                        "Get_HubSpot_Access_Token": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Http",
+                                    "inputs": {
+                                        "uri": "https://api.hubapi.com/crm/v3/objects/contacts",
+                                        "method": "POST",
+                                        "headers": {
+                                            "Authorization": "Bearer @{body('Get_HubSpot_Access_Token')?['value']}",
+                                            "Content-Type": "application/json",
+                                            "X-HubSpot-Correlation-Id": "@{variables('correlationId')}"
+                                        },
+                                        "body": "@outputs('Compose')"
+                                    },
+                                    "runtimeConfiguration": {
+                                        "contentTransfer": {
+                                            "transferMode": "Chunked"
+                                        }
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "Compose": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "else": {
+                                "actions": {}
+                            },
+                            "expression": {
+                                "and": [
+                                    {
+                                        "equals": [
+                                            "@empty(body('Parse_JSON')?['hubspotContactId'])",
+                                            true
+                                        ]
+                                    }
+                                ]
+                            },
+                            "type": "If"
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "keyvault": {
+                                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/keyvault')]",
+                                "connectionId": "[resourceId('Microsoft.Web/connections', variables('keyVaultConnectionName'))]",
+                                "connectionName": "[variables('keyVaultConnectionName')]",
+                                "connectionProperties": {
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Web/connections",
+            "apiVersion": "2016-06-01",
+            "name": "[variables('keyVaultConnectionName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "displayName": "Key Vault Connection",
+                "parameterValueType": "Alternative",
+                "alternativeParameterValues": {
+                    "vaultName": "[parameters('keyVaultName')]"
+                },
+                "api": {
+                    "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/keyvault')]"
+                }
+            }
+        }
+    ]
+}
