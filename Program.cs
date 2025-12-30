@@ -99,13 +99,12 @@ app.MapGet("/api/leads", async (AzureSQLDbContext db) => await db.Leads.ToListAs
 // Receives HubSpot contact registration data and updates the corresponding lead in the database.
 app.MapPost("/webhooks/hubspot/updateContactId", async (AzureSQLDbContext db, HubspotContactRecord hubspotData, ILogger<Program> logger) =>
 {
+    // LOG THE RAW JSON RECEIVED
+    logger.LogInformation("Received HubSpot contact update webhook: {@hubspotData}", hubspotData);
+
     // update the lead with a HubspotContactId if it exists based on external_contact_id => ContactId mapping
     if (string.IsNullOrEmpty(hubspotData.ExternalContactId) || string.IsNullOrEmpty(hubspotData.HubspotContactId))
     {
-        //log json received
-#pragma warning disable CA1848 // Use the LoggerMessage delegates
-        logger.LogInformation("Received HubSpot webhook data: {@HubspotData}", hubspotData);
-#pragma warning restore CA1848 // Use the LoggerMessage delegates
         return Results.BadRequest(new { Message = "ExternalContactId and HubspotContactId are required." });
     }
 
