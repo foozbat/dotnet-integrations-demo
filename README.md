@@ -1,45 +1,78 @@
 [![CI](https://github.com/foozbat/dotnet-integrations-demo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/foozbat/dotnet-integrations-demo/actions/workflows/ci.yml)
 
-# .NET + Azure Logic Apps + HubSpot + Zapier Demo
+# .NET Integrations Demo
 
-This project demonstrates a simple, real-world cloud integration using:
+A real-world cloud integration platform demonstrating modern API-first architecture with multi-channel customer engagement workflows. This project showcases seamless integration between CRM systems, notification services, and cloud automation tools.
 
-- ASP.NET Core Web API
-- Azure Logic Apps
-- HubSpot CRM
-- Zapier Webhooks
+<b>🎥 A live demo is available upon request.</b>
 
-## Documentation
-Pending
+## 🛠️ Tech Stack
 
-## Architecture Overview
+### Backend
+- **.NET 10** - ASP.NET Core Web API with minimal APIs
+- **Entity Framework Core 10** - ORM for database access with retry logic
+- **Azure SQL Database** - Cloud-native relational database
+- **Swagger/OpenAPI** - Interactive API documentation
+
+### Integration & Automation
+- **Azure Logic Apps** - Serverless workflow orchestration
+- **HubSpot CRM** - Contact management and marketing automation
+- **Zapier** - Multi-channel notification workflows
+  - SendGrid for email
+  - Twilio for SMS
+  - Slack for team notifications
+
+### DevOps
+- **GitHub Actions** - CI/CD pipeline
+- **Azure App Service** - PaaS hosting
+
+## 🏗️ Architecture
 
 ```
 Client (Postman / Swagger)
-↓
-ASP.NET Core API
-├── Save Contact to Azure SQL DB
-└── Azure Logic App
-     ├── HubSpot CRM
-     |   └── Create Contact
-     |   └── Trigger Hubspot Workflow
-     |       └── Update ASP.NET Contact with Hubspot Contact ID
-     └── Zapier
-         └── Email via Sendgrid
-         └── SMS via Twilio
-         └── Notify via Slack
+         ↓
+   ASP.NET Core API
+    ├── Save to Azure SQL
+    └── Trigger Logic App
+         ├── HubSpot CRM
+         │   ├── Create Contact
+         │   └── Workflow Callback
+         │       └── Update Contact ID
+         └── Zapier Webhook
+             ├── Email (SendGrid)
+             ├── SMS (Twilio)
+             └── Slack Notification
 ```
 
-### Azure Logic App Workflow
+### Workflow Visualizations
+
+<details>
+<summary>Azure Resources</summary>
+
+![Azure Resources](screenshots/azure-resource-group.jpg)
+</details>
+
+<details>
+<summary>Azure Logic App Workflow</summary>
+
 ![Azure Logic App](screenshots/azure-logic-app.jpg)
+</details>
 
-### HubSpot Automation Workflow
+<details>
+<summary>HubSpot Automation Workflow</summary>
+
 ![HubSpot Workflow](screenshots/hubspot-workflow.jpg)
+</details>
 
-### Zapier Integration Workflow
+<details>
+<summary>Zapier Integration Workflow</summary>
+
 ![Zapier Workflow](screenshots/zapier-workflow.jpg)
+</details>
 
-## Sample Request
+## 🚀 Quick Start
+
+### Sample API Request
 
 ```http
 POST /api/signup
@@ -49,11 +82,12 @@ Content-Type: application/json
   "firstName": "Demo",
   "lastName": "User",
   "email": "demo.user@acme.com",
-  "phone": "123-456-7890"
+  "phone": "555-456-7890"
 }
 ```
 
-## Future Improvements
-- Add authentication and authorization
-- Enable Logic App to update existing contacts in HubSpot
-- Improve error handling in Zapier
+## 📋 Future Enhancements
+- Add authentication using Azure API Management
+- Enable Logic App to update existing HubSpot contacts
+- Enhanced error handling and retry policies
+- Rate limiting and request throttling
