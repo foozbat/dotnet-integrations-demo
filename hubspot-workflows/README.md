@@ -2,47 +2,66 @@
 
 This directory contains HubSpot workflow definitions that can be deployed via GitHub Actions.
 
-## Setup
+## Workflow Overview
 
-1. **Create a HubSpot Legacy App:**
-   - Grant the following scopes:
-     - `automation` (read/write)
-     - `crm.objects.contacts` (read)
-   - Copy the access token
+**register-contact-workflow.json**
+- **Purpose:** Syncs HubSpot contacts back to the .NET API backend
+- **Trigger:** When a contact has the `external_contact_id` custom property set
+- **Action:** Sends a POST webhook with `ExternalContactId` and `HubspotContactId` to update the Lead record
 
-2. **Add GitHub Secrets:**
-   - Go to your repository Settings → Secrets and variables → Actions
-   - Add a new secret: `HUBSPOT_ACCESS_TOKEN`
-   - Paste your HubSpot legacy app access token
+## Prerequisites
 
-3. **Update the webhook URL:**
-   - Edit `hello-world-workflow.json`
-   - Replace `https://webhook.site/unique-url-here` with your actual webhook endpoint
-   - You can use your Azure Logic App URL or the .NET API endpoint
+### 1. Create HubSpot Custom Property
+
+Before deploying, create a custom contact property in HubSpot:
+- **Property name:** `external_contact_id`
+- **Type:** Single-line text
+- **Purpose:** Stores the Lead's ContactId from your .NET API
+
+### 2. Create a HubSpot Legacy App
+
+1. Go to HubSpot Settings → Integrations → Legacy Apps
+2. Create a new private app with the following scopes:
+   - `automation` (read/write)
+   - `crm.objects.contacts` (read)
+3. Copy the access token
+
+### 3. Configure GitHub Secrets and Variables
+
+Go to your repository Settings → Secrets and variables → Actions:
+
+**Secrets:**
+- `HUBSPOT_ACCESS_TOKEN` - Your HubSpot legacy app access token
+
+**Variables:**
+- `AZURE_APP_NAME` - Your Azure App Service name (e.g., `my-integrations-api`)
 
 ## Deployment
 
-The workflow will automatically deploy when you:
+The workflow deploys automatically when you:
 - Push changes to `hubspot-workflows/**` files on the `main` branch
-- Manually trigger via GitHub Actions UI
+- Manually trigger the "Deploy HubSpot Workflow" action
 
-## Workflow Details
+The GitHub Action will:
+1. Replace `{{WEBHOOK_URL}}` with your Azure App Service URL
+2. Create the workflow in HubSpot via the Automation v4 API
 
-**hello-world-workflow.json**
-- **Trigger:** When a new contact is created (createdate is known)
-- **Action:** Sends a POST webhook with contact details
-- **Enrollment:** Automatic (not manual)
+## Manual Configuration Required
 
-## Testing
+⚠️ **Important:** After deployment, you must manually configure the webhook body in HubSpot UI:
 
-After deployment:
-1. Create a new contact in HubSpot
-2. The workflow should trigger automatically
-3. Check the webhook endpoint for the "Hello World" message with contact data
+1. Open the workflow in HubSpot (Settings → Workflows)
+2. Edit the webhook action
+3. In the "Request body" section, add these properties:
+   - `ExternalContactId` → Map to contact property `external_contact_id`
+   - `HubspotContactId` → Map to contact property `Record ID`
 
-## Customization
+This manual step is required because the HubSpot Automation v4 API does not support setting webhook body mappings programmatically.
 
-To modify the workflow:
-1. Edit `hello-world-workflow.json`
-2. Commit and push to `main` branch
-3. GitHub Actions will automatically deploy the updated workflow
+## How It Works
+
+1. Your .NET API creates a contact in HubSpot via Azure Logic Apps
+2. The Logic App sets the `external_contact_id` property to the Lead's `ContactId`
+3. HubSpot workflow enrolls the contact (because `external_contact_id` IS_KNOWN)
+4. Webhook sends `ExternalContactId` and `HubspotContactId` to `/webhooks/hubspot/updateContactId`
+5. .NET API updates the Lead record with the HubSpot contact ID

@@ -5,7 +5,7 @@
   "isEnabled": true,
   "flowType": "WORKFLOW",
   "name": "Contact Created → Update Backend",
-  "description": "Sends contact data to backend when a new contact is created",
+  "description": "Sends contact data to backend when a new contact is created from API",
   "startActionId": "1",
   "actions": [
     {
@@ -33,7 +33,7 @@
           "filterBranches": [],
           "filters": [
             {
-              "property": "createdate",
+              "property": "external_contact_id",
               "operation": {
                 "operationType": "ALL_PROPERTY",
                 "operator": "IS_KNOWN"

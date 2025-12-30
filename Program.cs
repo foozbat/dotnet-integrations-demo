@@ -15,6 +15,7 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
+    // enable for demo, would normally only enable this in dev environment
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Dotnet Integrations API", Description = "An Amazing Dotnet Integrations API", Version = "v1" });
 });
 
@@ -37,7 +38,8 @@ _ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dotnet 
 // Middleware to log raw request bodies
 app.Use(async (context, next) =>
 {
-    if (context.Request.Method == "POST" || context.Request.Method == "PUT" || context.Request.Method == "PATCH")
+    // also check if this is development environment
+    if (context.Request.Method is "POST" or "PUT" or "PATCH" && context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
     {
         context.Request.EnableBuffering();
 
@@ -76,7 +78,7 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
     }
 
     // check for valid email
-    if (!MyRegex().IsMatch(lead.Email))
+    if (!ValidEmail().IsMatch(lead.Email))
     {
         return Results.BadRequest(new { Message = "Invalid email format." });
     }
@@ -160,5 +162,5 @@ app.Run();
 public partial class Program
 {
     [System.Text.RegularExpressions.GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase, "en-US")]
-    private static partial System.Text.RegularExpressions.Regex MyRegex();
+    private static partial System.Text.RegularExpressions.Regex ValidEmail();
 }

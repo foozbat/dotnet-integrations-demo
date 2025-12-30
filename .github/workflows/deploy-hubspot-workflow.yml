@@ -24,7 +24,7 @@ jobs:
     - name: Deploy workflow to HubSpot
       run: |
         # Replace webhook URL placeholder with environment variable
-        WORKFLOW_JSON=$(cat hubspot-workflows/register-contact-workflow.json | sed "s|{{WEBHOOK_URL}}|${{ env.WEBHOOK_URL }}|g")
+        WORKFLOW_JSON=$(cat hubspot-workflows/create-contact-workflow.json | sed "s|{{WEBHOOK_URL}}|${{ env.WEBHOOK_URL }}|g")
         
         # Create or update the workflow via HubSpot API
         RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \

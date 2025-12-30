@@ -21,15 +21,23 @@ ASP.NET Core API
 ├── Save Contact to Azure SQL DB
 └── Azure Logic App
      ├── HubSpot CRM
-     |   └── Create / Update Contact
+     |   └── Create Contact
      |   └── Trigger Hubspot Workflow
-     |       └── Qualify Lead
-     |       └── Update ASP.NET Contact Property
+     |       └── Update ASP.NET Contact with Hubspot Contact ID
      └── Zapier
          └── Email via Sendgrid
          └── SMS via Twilio
          └── Notify via Slack
 ```
+
+### Azure Logic App Workflow
+![Azure Logic App](screenshots/azure-logic-app.jpg)
+
+### HubSpot Automation Workflow
+![HubSpot Workflow](screenshots/hubspot-workflow.jpg)
+
+### Zapier Integration Workflow
+![Zapier Workflow](screenshots/zapier-workflow.jpg)
 
 ## Sample Request
 
@@ -44,3 +52,8 @@ Content-Type: application/json
   "phone": "123-456-7890"
 }
 ```
+
+## Future Improvements
+- Add authentication and authorization
+- Enable Logic App to update existing contacts in HubSpot
+- Improve error handling in Zapier
