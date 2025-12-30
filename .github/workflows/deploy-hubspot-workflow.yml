@@ -10,7 +10,7 @@ on:
 
 env:
   HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
-  WEBHOOK_URL: https://${{ vars.AZURE_APP_NAME }}.azurewebsites.net/webhooks/hubspot/updateContactId
+  WEBHOOK_URL: https://${{ vars.AZURE_APP_NAME }}.azurewebsites.net/webhooks/hubspot
 
 jobs:
   deploy-workflow:
