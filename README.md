@@ -38,13 +38,20 @@ Client (Postman / Swagger)
          ├── HubSpot CRM
          │   ├── Create Contact
          │   └── Workflow Callback
-         │       └── Update Contact ID
+         │       └── (API) Update Hubspot Contact ID
          ├── Create Stripe Subscription
+         |   └── Payment Success/Cancel Callback
+         |       └── (API) Update Lead with Payment Info
          └── Zapier Webhook
              ├── Email (SendGrid)
              ├── SMS (Twilio)
              └── Slack Notification
 ```
+
+## Design Decisions
+- Logic Apps used for long-running and fan-out workflows
+- API remains stateless and focused on validation + persistence
+- External systems isolated behind workflow boundaries
 
 ### Workflow Visualizations (click to expand graphics)
 
