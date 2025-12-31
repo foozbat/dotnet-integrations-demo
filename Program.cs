@@ -185,7 +185,7 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
     {
         logger.LogWarning("STRIPE_WEBHOOK_SECRET not configured, skipping signature verification");
         // Parse without verification in dev/testing
-        stripeEvent = Stripe.EventUtility.ParseEvent(json);
+        stripeEvent = Stripe.EventUtility.ParseEvent(json, throwOnApiVersionMismatch: false);
     }
     else if (string.IsNullOrEmpty(signatureHeader))
     {
@@ -196,7 +196,7 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
     {
         try
         {
-            stripeEvent = Stripe.EventUtility.ConstructEvent(json, signatureHeader, stripeWebhookSecret);
+            stripeEvent = Stripe.EventUtility.ConstructEvent(json, signatureHeader, stripeWebhookSecret, throwOnApiVersionMismatch: false);
             logger.LogInformation("Webhook signature verified successfully");
         }
         catch (Stripe.StripeException e)
