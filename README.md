@@ -33,19 +33,22 @@ A real-world cloud integration platform demonstrating modern API-first architect
 Client (Postman / Swagger)
          ↓
    ASP.NET Core API
-    ├── Save to Azure SQL
+    ├── Save Lead to Azure SQL
     └── Trigger Logic App
          ├── HubSpot CRM
-         │   ├── Create Contact
-         │   └── Workflow Callback
-         │       └── (API) Update Hubspot Contact ID
-         ├── Create Stripe Subscription
-         |   └── Payment Success/Cancel Callback
-         |       └── (API) Update Lead with Payment Info
+         │   ├── Create/Update Contact (with external_contact_id)
+         │   └── HubSpot Workflow (async)
+         │       └── Webhook → API: Update Lead.HubspotContactId
+         ├── Stripe (if paid plan)
+         │   └── Create Checkout Session
          └── Zapier Webhook
-             ├── Email (SendGrid)
+             ├── Email (SendGrid) with checkout link
              ├── SMS (Twilio)
              └── Slack Notification
+
+User clicks payment link → Stripe Checkout → Payment Complete
+         ↓
+Stripe Webhook → API: Update Lead.StripeCustomerId
 ```
 
 ## Design Decisions
