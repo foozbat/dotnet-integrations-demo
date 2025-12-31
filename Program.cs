@@ -225,6 +225,7 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
         return Results.BadRequest(new { Message = "Invalid checkout session data." });
     }
 
+    // note: customerId will only be provided if this is a subscription
     var customerId = session.CustomerId;
     var customerEmail = session.CustomerDetails?.Email;
 
@@ -239,7 +240,7 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
         return Results.NotFound(new { Message = "Lead not found with the specified email." });
     }
 
-    // Update lead with Stripe customer info
+    // Update lead with Stripe subscription info
     lead.StripeCustomerId = customerId;
     lead.SubscriptionStatus = session.Status ?? "complete";
     lead.UpdatedAt = DateTime.UtcNow;

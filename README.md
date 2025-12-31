@@ -4,9 +4,9 @@
 
 A real-world cloud integration platform demonstrating modern API-first architecture with multi-channel customer engagement workflows. This project showcases seamless integration between CRM systems, notification services, and cloud automation tools.
 
-<b>🎥 A live demo is available upon request.</b>
+<b>A live demo is available upon request.</b>
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
 - **.NET 10** - ASP.NET Core Web API with minimal APIs.
@@ -17,6 +17,7 @@ A real-world cloud integration platform demonstrating modern API-first architect
 ### Integration & Automation
 - **Azure Logic Apps** - For serverless workflow orchestration between API and integrations.
 - **HubSpot CRM**
+- **Stripe**
 - **Zapier**
   - SendGrid for email
   - Twilio for SMS
@@ -26,7 +27,7 @@ A real-world cloud integration platform demonstrating modern API-first architect
 - **GitHub Actions** - CI/CD pipeline
 - **Azure App Service** - PaaS hosting
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 Client (Postman / Swagger)
@@ -38,6 +39,7 @@ Client (Postman / Swagger)
          │   ├── Create Contact
          │   └── Workflow Callback
          │       └── Update Contact ID
+         ├── Create Stripe Subscription
          └── Zapier Webhook
              ├── Email (SendGrid)
              ├── SMS (Twilio)
@@ -70,7 +72,7 @@ Client (Postman / Swagger)
 ![Zapier Workflow](screenshots/zapier-workflow.jpg)
 </details>
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Sample API Request
 
@@ -86,7 +88,7 @@ Content-Type: application/json
 }
 ```
 
-## 📋 Future Enhancements
+## Future Enhancements
 - Add authentication using Azure API Management
 - Enable Logic App to update existing HubSpot contacts
 - Enhanced error handling and retry policies
