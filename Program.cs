@@ -2,7 +2,7 @@
  * Dotnet Integrations Demo API
  *
  * written by: Aaron Bishop
- * description: A sample .NET 7 Web API demonstrating integrations with Azure Logic Apps, HubSpot, Stripe, and Azure SQL Database.
+ * description: A .NET 10 Web API demonstrating integrations with Azure Logic Apps, HubSpot, Stripe, and Azure SQL Database.
  * 
  * Refer to the README.md for detailed project information.
  */
