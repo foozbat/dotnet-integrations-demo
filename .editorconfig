@@ -10,4 +10,5 @@ dotnet_diagnostic.CA1873.severity = none
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1050.severity = none
 dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.IDE0058.severity = none
 csharp_style_namespace_declarations = file_scoped:warning

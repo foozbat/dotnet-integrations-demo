@@ -10,18 +10,20 @@ A real-world cloud integration platform demonstrating modern API-first architect
 
 ### Backend
 - **.NET 10** - ASP.NET Core Web API with minimal APIs.
-- **Swagger/OpenAPI** - Interactive API documentation.
+- **Swagger/OpenAPI** 
 - **Entity Framework Core 10**
 - **Azure SQL Database**
 
 ### Integration & Automation
 - **Azure Logic Apps** - For serverless workflow orchestration between API and integrations.
-- **HubSpot CRM**
-- **Stripe**
-- **Zapier**
+- **Azure Key Vault** - For secure storage for API keys and secrets
+- **HubSpot CRM** - For rudimentary contact management
+- **Stripe** - For rudimentary payment processing
+- **Zapier** - For multi-channel notifications:
   - SendGrid for email
   - Twilio for SMS
   - Slack for team notifications
+- **Sentry** - For error monitoring across services
 
 ### DevOps
 - **GitHub Actions** - CI/CD pipeline
@@ -31,7 +33,7 @@ A real-world cloud integration platform demonstrating modern API-first architect
 
 ```
 Client (Postman / Swagger)
-         ↓
+    ↓
    ASP.NET Core API
     ├── Save Lead to Azure SQL
     └── Trigger Logic App

@@ -19,8 +19,12 @@ DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true));
 var webhookUrl = Environment.GetEnvironmentVariable("AZURE_LOGIC_APP_URL") ?? "";
 var connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTION_STRING") ?? "";
 var stripeWebhookSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET") ?? "";
+var sentryDsn = Environment.GetEnvironmentVariable("SENTRY_DSN") ?? "";
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// Suppress HTTPS redirect warning in development
+builder.Logging.AddFilter("Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware", LogLevel.Error);
 
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
@@ -33,20 +37,45 @@ builder.Services.AddSwaggerGen(c =>
 // Configure database connection
 builder.Services.AddDbContext<AzureSQLDbContext>(options =>
 {
-    _ = options.UseSqlServer(connectionString, sqlOptions =>
+    options.UseSqlServer(connectionString, sqlOptions =>
         sqlOptions.EnableRetryOnFailure(
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(30),
             errorNumbersToAdd: null));
 });
 
+// Add Sentry SDK
+builder.WebHost.UseSentry(options =>
+{
+    options.Dsn = sentryDsn;
+
+    // If DSN is empty, Sentry won't initialize
+    if (string.IsNullOrEmpty(sentryDsn))
+    {
+        Console.WriteLine("WARNING: SENTRY_DSN is not set. Sentry will not be initialized.");
+        return;
+    }
+
+    options.Debug = true; // Always show debug output for this demo
+    options.TracesSampleRate = 1.0;
+    options.MinimumBreadcrumbLevel = LogLevel.Information;
+    options.MinimumEventLevel = LogLevel.Warning; // Changed from Error to Warning
+    options.EnableLogs = true;
+
+    Console.WriteLine($"Sentry initialized with DSN: {sentryDsn.Substring(0, 30)}...");
+});
+
 WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
-_ = app.UseSwagger();
-_ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dotnet Integrations API v1"));
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dotnet Integrations API v1"));
 
-// Middleware to log raw request bodies
+/**
+ * MIDDLEWARE
+ */
+
+// Middleware to log raw request bodies in development for debugging endpoints
 app.Use(async (context, next) =>
 {
     // also check if this is development environment
@@ -64,6 +93,17 @@ app.Use(async (context, next) =>
             context.Request.Path, 
             body);
     }
+    await next();
+});
+
+// Middleware to add Sentry context tags
+app.Use(async (context, next) =>
+{
+    SentrySdk.ConfigureScope(scope =>
+    {
+        scope.SetTag("correlation_id", context.TraceIdentifier);
+        scope.SetTag("endpoint", context.Request.Path.Value ?? "/");
+    });
     await next();
 });
 
@@ -102,8 +142,8 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
     }
 
     // save to db
-    _ = db.Leads.Add(lead);
-    _ = await db.SaveChangesAsync();
+    db.Leads.Add(lead);
+    await db.SaveChangesAsync();
 
     // send webhook to Azure Logic Apps in the background
     JsonWebhook webhook = new()
@@ -157,7 +197,7 @@ app.MapPost("/webhooks/hubspot", async (AzureSQLDbContext db, HubspotWebhookEven
 
     lead.HubspotContactId = hubspotData.HubspotContactId;
     lead.UpdatedAt = DateTime.UtcNow;
-    _ = await db.SaveChangesAsync();
+    await db.SaveChangesAsync();
 
     return Results.Ok(new { Message = "Hubspot contact registered.", lead.Id, lead.ContactId });
 })
@@ -202,6 +242,13 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
         catch (Stripe.StripeException e)
         {
             logger.LogError(e, "Webhook signature verification failed");
+            SentrySdk.CaptureException(e, scope =>
+            {
+                scope.SetTag("integration", "stripe");
+                scope.SetTag("event_type", "signature_verification");
+                scope.SetExtra("has_signature", !string.IsNullOrEmpty(signatureHeader));
+            });
+
             return Results.BadRequest(new { Message = "Invalid signature." });
         }
     }
@@ -244,7 +291,7 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
     lead.StripeCustomerId = customerId;
     lead.SubscriptionStatus = session.Status ?? "complete";
     lead.UpdatedAt = DateTime.UtcNow;
-    _ = await db.SaveChangesAsync();
+    await db.SaveChangesAsync();
 
     logger.LogInformation("Updated lead {LeadId} with Stripe customer {CustomerId}", lead.Id, customerId);
 
@@ -256,6 +303,62 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
 .Produces(200)
 .Produces(400)
 .Produces(404);
+
+// Endpoint: POST /webhooks/logic-app-error
+// Receives error notifications from Azure Logic Apps for any workflow failure
+app.MapPost("/webhooks/logic-apps/error", async (LogicAppError errorData, ILogger<Program> logger) =>
+{
+    logger.LogError("Logic App workflow error: {@errorData}", errorData);
+
+    // Parse the scope results to find failed actions
+    List<ActionResult> failedActions = errorData.ErrorDetails?
+        .Where(action => action.Status is "Failed" or "TimedOut")
+        .ToList() ?? [];
+
+    var failedActionNames = string.Join(", ", failedActions.Select(a => a.Name));
+
+    SentrySdk.CaptureMessage(
+        $"Azure Logic App Workflow Failed: {failedActionNames}",
+        scope =>
+        {
+            scope.Level = SentryLevel.Error;
+            scope.SetTag("integration", "azure-logic-apps");
+            scope.SetTag("workflow_name", errorData.WorkflowName);
+            scope.SetTag("workflow_run_id", errorData.WorkflowRunId);
+            scope.SetTag("failed_actions", failedActionNames);
+
+            scope.SetExtra("trigger_time", errorData.TriggerTime.ToString("o"));
+            scope.SetExtra("lead_data", System.Text.Json.JsonSerializer.Serialize(errorData.LeadData));
+            scope.SetExtra("all_action_results", System.Text.Json.JsonSerializer.Serialize(errorData.ErrorDetails));
+
+            // Add breadcrumbs for each action in the workflow
+            foreach (ActionResult action in errorData.ErrorDetails ?? Enumerable.Empty<ActionResult>())
+            {
+                BreadcrumbLevel level = action.Status == "Succeeded" 
+                    ? BreadcrumbLevel.Info 
+                    : BreadcrumbLevel.Error;
+
+                SentrySdk.AddBreadcrumb(
+                    $"Action: {action.Name} - {action.Status}", 
+                    "workflow",
+                    level: level
+                );
+            }
+
+            // Set user context if email available
+            if (errorData.LeadData?.TryGetValue("email", out var email) == true)
+            {
+                scope.User = new SentryUser { Email = email?.ToString() };
+            }
+        }
+    );
+
+    return Results.Ok(new { Message = "Error logged to Sentry", FailedActions = failedActionNames });
+})
+.WithName("LogicAppError")
+.WithSummary("Receive Logic App error notifications")
+.WithDescription("Logs any errors from Azure Logic Apps workflow to Sentry with full action details")
+.Produces(200);
 
 /**
  * Stripe redirect endpoints for testing purposes
