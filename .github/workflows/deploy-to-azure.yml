@@ -51,7 +51,8 @@ jobs:
           --settings \
             AZURE_SQL_CONNECTION_STRING='${{ secrets.AZURE_SQL_CONNECTION_STRING }}' \
             AZURE_LOGIC_APP_URL='${{ vars.AZURE_LOGIC_APP_URL }}' \
-            STRIPE_WEBHOOK_SECRET='${{ secrets.STRIPE_WEBHOOK_SECRET }}'
+            STRIPE_WEBHOOK_SECRET='${{ secrets.STRIPE_WEBHOOK_SECRET }}' \
+            SENTRY_DSN='${{ secrets.SENTRY_DSN }}'
 
     - name: Deployment Summary
       run: |
