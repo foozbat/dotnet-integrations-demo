@@ -8,6 +8,8 @@
  */
 
 using dotenv.net;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using IntegrationsDemo;
@@ -16,10 +18,36 @@ using Stripe.Checkout;
 // Load .env file if it exists
 DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true));
 
-var webhookUrl = Environment.GetEnvironmentVariable("AZURE_LOGIC_APP_URL") ?? "";
-var connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTION_STRING") ?? "";
-var stripeWebhookSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET") ?? "";
-var sentryDsn = Environment.GetEnvironmentVariable("SENTRY_DSN") ?? "";
+// connect to Azure Key Vault (prod only)
+var keyVaultUrl = Environment.GetEnvironmentVariable("AZURE_KEY_VAULT_URL") ?? "";
+SecretClient? kv = null;
+if (!string.IsNullOrEmpty(keyVaultUrl))
+{
+    kv = new(new Uri(keyVaultUrl), new DefaultAzureCredential());
+}
+
+// Get secrets (prod), fall back to environment variables (dev)
+string GetSecret(string name)
+{
+    if (kv != null)
+    {
+        try
+        {
+            return kv.GetSecret(name).Value.Value;
+        }
+        catch (Azure.RequestFailedException)
+        {
+            // fall back to environment variable
+        }
+    }
+
+    return Environment.GetEnvironmentVariable(name.ToUpperInvariant().Replace("-", "_")) ?? "";
+}
+
+var connectionString = GetSecret("azure-sql-connection-string");
+var logicAppUrl = GetSecret("azure-logic-app-url");
+var stripeWebhookSecret = GetSecret("stripe-webhook-secret");
+var sentryDsn = GetSecret("sentry-dsn");
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -62,7 +90,7 @@ builder.WebHost.UseSentry(options =>
     options.MinimumEventLevel = LogLevel.Warning; // Changed from Error to Warning
     options.EnableLogs = true;
 
-    Console.WriteLine($"Sentry initialized with DSN: {sentryDsn.Substring(0, 30)}...");
+    Console.WriteLine($"Sentry initialized with DSN: {sentryDsn[..30]}...");
 });
 
 WebApplication app = builder.Build();
@@ -88,9 +116,9 @@ app.Use(async (context, next) =>
         context.Request.Body.Position = 0;
 
         ILogger<Program> logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogInformation("Raw request to {Method} {Path}: {Body}", 
-            context.Request.Method, 
-            context.Request.Path, 
+        logger.LogInformation("Raw request to {Method} {Path}: {Body}",
+            context.Request.Method,
+            context.Request.Path,
             body);
     }
     await next();
@@ -148,7 +176,7 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
     // send webhook to Azure Logic Apps in the background
     JsonWebhook webhook = new()
     {
-        WebhookUrl = webhookUrl,
+        WebhookUrl = logicAppUrl,
         CorrelationId = Guid.NewGuid().ToString(),
         Timeout = TimeSpan.FromSeconds(30),
         Logger = logger
@@ -334,12 +362,12 @@ app.MapPost("/webhooks/logic-apps/error", async (LogicAppError errorData, ILogge
             // Add breadcrumbs for each action in the workflow
             foreach (ActionResult action in errorData.ErrorDetails ?? Enumerable.Empty<ActionResult>())
             {
-                BreadcrumbLevel level = action.Status == "Succeeded" 
-                    ? BreadcrumbLevel.Info 
+                BreadcrumbLevel level = action.Status == "Succeeded"
+                    ? BreadcrumbLevel.Info
                     : BreadcrumbLevel.Error;
 
                 SentrySdk.AddBreadcrumb(
-                    $"Action: {action.Name} - {action.Status}", 
+                    $"Action: {action.Name} - {action.Status}",
                     "workflow",
                     level: level
                 );
