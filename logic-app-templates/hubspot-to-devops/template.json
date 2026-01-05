@@ -1,0 +1,193 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_integrations_demo_la_hubspot_to_devops_name": {
+            "defaultValue": "integrations-demo-la-hubspot-to-devops",
+            "type": "string"
+        },
+        "connections_visualstudioteamservices_externalid": {
+            "defaultValue": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/resourceGroups/integrations-demo/providers/Microsoft.Web/connections/visualstudioteamservices",
+            "type": "string"
+        },
+        "connections_keyvault_externalid": {
+            "defaultValue": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/resourceGroups/integrations-demo/providers/Microsoft.Web/connections/keyvault",
+            "type": "string"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('workflows_integrations_demo_la_hubspot_to_devops_name')]",
+            "location": "centralus",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "When_an_HTTP_request_is_received": {
+                            "type": "Request",
+                            "kind": "Http",
+                            "inputs": {
+                                "method": "POST"
+                            }
+                        }
+                    },
+                    "actions": {
+                        "Track_Correlation_ID": {
+                            "runAfter": {},
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "correlationId",
+                                        "type": "string",
+                                        "value": "@{triggerOutputs()?['headers']?['x-correlation-id']}"
+                                    }
+                                ]
+                            }
+                        },
+                        "Main_Workflow": {
+                            "actions": {
+                                "Ticket_Status_Is": {
+                                    "runAfter": {
+                                        "Parse_JSON": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "cases": {
+                                        "New": {
+                                            "case": 1,
+                                            "actions": {
+                                                "Create_an_Issue": {
+                                                    "type": "ApiConnection",
+                                                    "inputs": {
+                                                        "host": {
+                                                            "connection": {
+                                                                "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                                            }
+                                                        },
+                                                        "method": "patch",
+                                                        "body": {
+                                                            "title": "@body('Parse_JSON')?['subject']",
+                                                            "description": "<p class=\"editor-paragraph\">@{body('Parse_JSON')?['content']}</p>",
+                                                            "dynamicFields": {
+                                                                "System.Tags": "HubSpotTicket-@{body('Parse_JSON')?['hs_ticket_id']}"
+                                                            }
+                                                        },
+                                                        "path": "/@{encodeURIComponent('integrations-demo')}/_apis/wit/workitems/$@{encodeURIComponent('Issue')}",
+                                                        "queries": {
+                                                            "account": "fzb-test1"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "default": {
+                                        "actions": {}
+                                    },
+                                    "expression": "@body('Parse_JSON')?['hs_pipeline_stage']",
+                                    "type": "Switch"
+                                },
+                                "Parse_JSON": {
+                                    "type": "ParseJson",
+                                    "inputs": {
+                                        "content": "@triggerBody()",
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "content": {
+                                                    "type": "string"
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "createdate": {
+                                                    "type": "integer"
+                                                },
+                                                "hs_ticket_id": {
+                                                    "type": "integer"
+                                                },
+                                                "hs_pipeline_stage": {
+                                                    "type": "integer"
+                                                },
+                                                "hs_lastactivitydate": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "Get_HubSpot_Access_Token": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Scope"
+                        },
+                        "Get_HubSpot_Access_Token": {
+                            "runAfter": {
+                                "Track_Correlation_ID": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['keyvault']['connectionId']"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "/secrets/@{encodeURIComponent('hubspot-api-access-token')}/value"
+                            },
+                            "runtimeConfiguration": {
+                                "secureData": {
+                                    "properties": [
+                                        "inputs",
+                                        "outputs"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "visualstudioteamservices": {
+                                "id": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/providers/Microsoft.Web/locations/centralus/managedApis/visualstudioteamservices",
+                                "connectionId": "[parameters('connections_visualstudioteamservices_externalid')]",
+                                "connectionName": "visualstudioteamservices",
+                                "connectionProperties": {}
+                            },
+                            "keyvault": {
+                                "id": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/providers/Microsoft.Web/locations/centralus/managedApis/keyvault",
+                                "connectionId": "[parameters('connections_keyvault_externalid')]",
+                                "connectionName": "keyvault",
+                                "connectionProperties": {
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}

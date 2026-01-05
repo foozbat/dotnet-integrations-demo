@@ -1,0 +1,269 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_integrations_demo_la_devops_to_hubspot_name": {
+            "defaultValue": "integrations-demo-la-devops-to-hubspot",
+            "type": "string"
+        },
+        "connections_visualstudioteamservices_externalid": {
+            "defaultValue": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/resourceGroups/integrations-demo/providers/Microsoft.Web/connections/visualstudioteamservices",
+            "type": "string"
+        },
+        "connections_keyvault_externalid": {
+            "defaultValue": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/resourceGroups/integrations-demo/providers/Microsoft.Web/connections/keyvault",
+            "type": "string"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('workflows_integrations_demo_la_devops_to_hubspot_name')]",
+            "location": "centralus",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "When_a_work_item_is_updated": {
+                            "recurrence": {
+                                "interval": 3,
+                                "frequency": "Minute"
+                            },
+                            "evaluatedRecurrence": {
+                                "interval": 3,
+                                "frequency": "Minute"
+                            },
+                            "splitOn": "@triggerBody()?['value']",
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "/v2/workitemupdated_trigger/@{encodeURIComponent('integrations-demo')}/_apis/wit/wiql",
+                                "queries": {
+                                    "account": "fzb-test1",
+                                    "team": "integrations-demo Team",
+                                    "areaPathComparison": "Equals",
+                                    "iterationPathComparison": "Equals"
+                                }
+                            }
+                        }
+                    },
+                    "actions": {
+                        "Main_Workflow": {
+                            "actions": {
+                                "If_Issue_has_a_HubSpot_Ticket_ID": {
+                                    "actions": {
+                                        "Get_HubSpot_Access_Token": {
+                                            "type": "ApiConnection",
+                                            "inputs": {
+                                                "host": {
+                                                    "connection": {
+                                                        "name": "@parameters('$connections')['keyvault']['connectionId']"
+                                                    }
+                                                },
+                                                "method": "get",
+                                                "path": "/secrets/@{encodeURIComponent('hubspot-api-access-token')}/value"
+                                            },
+                                            "runtimeConfiguration": {
+                                                "secureData": {
+                                                    "properties": [
+                                                        "inputs",
+                                                        "outputs"
+                                                    ]
+                                                }
+                                            }
+                                        },
+                                        "Switch": {
+                                            "runAfter": {
+                                                "Compose_JSON": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "cases": {
+                                                "Closed": {
+                                                    "case": "Done",
+                                                    "actions": {
+                                                        "Add_HubSpot_Ticket_Note_(HTTP)": {
+                                                            "type": "Http",
+                                                            "inputs": {
+                                                                "uri": "https://api.hubapi.com/crm/v3/objects/notes",
+                                                                "method": "POST",
+                                                                "headers": {
+                                                                    "Authorization": "Bearer @{body('Get_HubSpot_Access_Token')?['value']}",
+                                                                    "Content-Type": "application/json",
+                                                                    "X-Correlation-Id": "@{variables('correlationId')}"
+                                                                },
+                                                                "body": "@outputs('Compose_JSON')"
+                                                            },
+                                                            "runtimeConfiguration": {
+                                                                "contentTransfer": {
+                                                                    "transferMode": "Chunked"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "default": {
+                                                "actions": {}
+                                            },
+                                            "expression": "@triggerBody()?['fields']?['System_State']",
+                                            "type": "Switch"
+                                        },
+                                        "Compose_JSON": {
+                                            "runAfter": {
+                                                "Get_HubSpot_Access_Token": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Compose",
+                                            "inputs": {
+                                                "properties": {
+                                                    "hs_timestamp": "@{utcNow()}",
+                                                    "hs_note_body": "Issue resolved by developers."
+                                                },
+                                                "associations": [
+                                                    {
+                                                        "to": {
+                                                            "id": "@{variables('hubspotTicketId')}"
+                                                        },
+                                                        "types": [
+                                                            {
+                                                                "associationCategory": "HUBSPOT_DEFINED",
+                                                                "associationTypeId": 18
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "Foreach_Tag": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "else": {
+                                        "actions": {}
+                                    },
+                                    "expression": {
+                                        "and": [
+                                            {
+                                                "not": {
+                                                    "equals": [
+                                                        "@variables('hubspotTicketId')",
+                                                        ""
+                                                    ]
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "type": "If"
+                                },
+                                "Foreach_Tag": {
+                                    "foreach": "@variables('tags')",
+                                    "actions": {
+                                        "If_Tag_Contains_Ticket_ID": {
+                                            "actions": {
+                                                "Set_Ticket_ID": {
+                                                    "type": "SetVariable",
+                                                    "inputs": {
+                                                        "name": "hubspotTicketId",
+                                                        "value": "@replace(items('Foreach_Tag'), 'HubSpotTicket-', '')"
+                                                    }
+                                                }
+                                            },
+                                            "else": {
+                                                "actions": {}
+                                            },
+                                            "expression": {
+                                                "and": [
+                                                    {
+                                                        "startsWith": [
+                                                            "@items('Foreach_Tag')",
+                                                            "HubSpotTicket-"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "type": "If"
+                                        }
+                                    },
+                                    "type": "Foreach"
+                                }
+                            },
+                            "runAfter": {
+                                "Init_Variables": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Scope"
+                        },
+                        "Init_Variables": {
+                            "runAfter": {},
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "correlationId",
+                                        "type": "string",
+                                        "value": "@{triggerOutputs()?['headers']?['x-correlation-id']}"
+                                    },
+                                    {
+                                        "name": "tags",
+                                        "type": "array",
+                                        "value": "@split(triggerBody()?['fields']?['System_Tags'], ';')"
+                                    },
+                                    {
+                                        "name": "hubspotTicketId",
+                                        "type": "string"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "visualstudioteamservices": {
+                                "id": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/providers/Microsoft.Web/locations/centralus/managedApis/visualstudioteamservices",
+                                "connectionId": "[parameters('connections_visualstudioteamservices_externalid')]",
+                                "connectionName": "visualstudioteamservices",
+                                "connectionProperties": {}
+                            },
+                            "keyvault": {
+                                "id": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/providers/Microsoft.Web/locations/centralus/managedApis/keyvault",
+                                "connectionId": "[parameters('connections_keyvault_externalid')]",
+                                "connectionName": "keyvault",
+                                "connectionProperties": {
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,15 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_integrations_demo_la_devops_to_hubspot_name": {
+            "value": null
+        },
+        "connections_visualstudioteamservices_externalid": {
+            "value": null
+        },
+        "connections_keyvault_externalid": {
+            "value": null
+        }
+    }
+}
