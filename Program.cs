@@ -482,9 +482,3 @@ app.MapGet("/payment-cancelled", () => Results.Content("""
 
 // Run the application
 app.Run();
-
-public partial class Program
-{
-    [System.Text.RegularExpressions.GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase, "en-US")]
-    private static partial System.Text.RegularExpressions.Regex ValidEmail();
-}
