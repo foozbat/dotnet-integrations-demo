@@ -148,32 +148,30 @@ app.MapGet("/", () => Results.Ok(new { status = "healthy", message = "Dotnet Int
 
 // Endpoint: POST /api/users
 // Captures new lead information, validates data, stores in Azure SQL Database, and triggers Logic Apps workflow
-app.MapPost("/api/users", async (AzureSQLDbContext db, Lead lead, ILogger<Program> logger) =>
+app.MapPost("/api/users", async (AzureSQLDbContext db, LeadCreateRequest request, ILogger<Program> logger) =>
 {
-    // validation
-    if (string.IsNullOrEmpty(lead.FirstName) || string.IsNullOrEmpty(lead.LastName) || string.IsNullOrEmpty(lead.Email) || string.IsNullOrEmpty(lead.Phone))
-    {
-        return Results.BadRequest(new { Message = "First Name, Last Name, Email, and Phone are required." });
-    }
-
-    // check for valid email
-    if (!ValidEmail().IsMatch(lead.Email))
-    {
-        return Results.BadRequest(new { Message = "Invalid email format." });
-    }
-
-    // check for duplicate email
-    var emailExists = await db.Leads.AnyAsync(l => l.Email == lead.Email);
+    // Check for duplicate email
+    var emailExists = await db.Leads.AnyAsync(l => l.Email == request.Email);
     if (emailExists)
     {
-        return Results.BadRequest(new { Message = "A lead with this email already exists." });
+        return Results.BadRequest(new { Message = "A user with this email already exists." });
     }
 
-    // save to db
+    // Create new lead from request
+    Lead lead = new()
+    {
+        FirstName = request.FirstName,
+        LastName = request.LastName,
+        Email = request.Email,
+        Phone = request.Phone,
+        Plan = request.Plan
+    };
+
+    // Save to db
     db.Leads.Add(lead);
     await db.SaveChangesAsync();
 
-    // send webhook to Azure Logic Apps in the background
+    // Send webhook to Azure Logic Apps in the background
     JsonWebhook webhook = new()
     {
         WebhookUrl = logicAppUrl,
@@ -183,7 +181,7 @@ app.MapPost("/api/users", async (AzureSQLDbContext db, Lead lead, ILogger<Progra
     };
     _ = Task.Run(async () => await webhook.SendAsync(lead));
 
-    return Results.Ok(new { Message = "Signup successful." });
+    return Results.Ok(new { Message = "Signup successful.", User = lead });
 })
 .WithName("CreateUserSignup")
 .WithSummary("Create a new user signup")
