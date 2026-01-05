@@ -677,7 +677,7 @@
                                     },
                                     "type": "Http",
                                     "inputs": {
-                                        "uri": "https://hooks.zapier.com/hooks/catch/25741920/ua9023q/?correlationId=@{variables('correlationId')}",
+                                        "uri": "@{body('Get_Zapier_Webhook_URL')?['value']}/?correlationId=@{variables('correlationId')}",
                                         "method": "POST",
                                         "body": {
                                             "firstName": "@{body('Parse_Backend_Request_JSON')?['firstName']}",
