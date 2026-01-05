@@ -146,9 +146,9 @@ app.MapGet("/", () => Results.Ok(new { status = "healthy", message = "Dotnet Int
 .WithName("HealthCheck")
 .ExcludeFromDescription();
 
-// Endpoint: POST /api/signup
+// Endpoint: POST /api/users
 // Captures new lead information, validates data, stores in Azure SQL Database, and triggers Logic Apps workflow
-app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Program> logger) =>
+app.MapPost("/api/users", async (AzureSQLDbContext db, Lead lead, ILogger<Program> logger) =>
 {
     // validation
     if (string.IsNullOrEmpty(lead.FirstName) || string.IsNullOrEmpty(lead.LastName) || string.IsNullOrEmpty(lead.Email) || string.IsNullOrEmpty(lead.Phone))
@@ -185,19 +185,60 @@ app.MapPost("/api/signup", async (AzureSQLDbContext db, Lead lead, ILogger<Progr
 
     return Results.Ok(new { Message = "Signup successful." });
 })
-.WithName("SignUp")
-.WithSummary("Create a new lead signup")
-.WithDescription("Validates and stores a new lead in the database, then asynchronously sends the data to an Azure Logic Apps webhook for further processing.")
+.WithName("CreateUserSignup")
+.WithSummary("Create a new user signup")
+.WithDescription("Validates and stores a new user in the database, then asynchronously sends the data to an Azure Logic Apps webhook for further processing.")
 .Produces(200)
 .Produces(400);
 
-// Endpoint: GET /api/leads
-// Returns a list of all leads stored in the database.
-app.MapGet("/api/leads", async (AzureSQLDbContext db) => await db.Leads.ToListAsync())
-.WithName("GetLeads")
-.WithSummary("Get all leads")
-.WithDescription("Returns a list of all leads stored in the database.")
+// Endpoint: GET /api/users
+// Returns a list of all users stored in the database.
+app.MapGet("/api/users", async (AzureSQLDbContext db) => await db.Leads.ToListAsync())
+.WithName("GetUsers")
+.WithSummary("Get all users")
+.WithDescription("Returns a list of all users stored in the database.")
 .Produces<List<Lead>>(200);
+
+// Endpoint: PATCH /api/users/{id}
+// Updates specific properties of an existing user
+app.MapPatch("/api/users/{id}", async (AzureSQLDbContext db, int id, LeadUpdateRequest request, ILogger<Program> logger) =>
+{
+    Lead? lead = await db.Leads.FindAsync(id);
+
+    if (lead == null)
+    {
+        return Results.NotFound(new { Message = "User not found." });
+    }
+
+    // Update only the properties that are provided (non-null)
+    lead.FirstName = request.FirstName ?? lead.FirstName;
+    lead.LastName = request.LastName ?? lead.LastName;
+    lead.Phone = request.Phone ?? lead.Phone;
+    lead.Plan = request.Plan ?? lead.Plan;
+    lead.HubspotContactId = request.HubspotContactId ?? lead.HubspotContactId;
+
+    if (request.Email != null)
+    {
+        // Check for duplicate email (excluding current user)
+        var emailExists = await db.Leads.AnyAsync(l => l.Email == request.Email && l.Id != id);
+        if (emailExists)
+        {
+            return Results.BadRequest(new { Message = "A user with this email already exists." });
+        }
+
+        lead.Email = request.Email;
+    }
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { Message = "User updated successfully.", User = lead });
+})
+.WithName("UpdateUser")
+.WithSummary("Update user properties")
+.WithDescription("Updates one or more properties of an existing user. Only provided fields will be updated.")
+.Produces(200)
+.Produces(400)
+.Produces(404);
 
 /**
  * WEBHOOK ENDPOINTS

@@ -123,7 +123,7 @@ HubSpot Ticket Note Added
 
 **Lead Signup:**
 ```http
-POST /api/signup
+POST /api/users
 Content-Type: application/json
 
 {
