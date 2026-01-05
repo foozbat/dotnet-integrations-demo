@@ -7,7 +7,7 @@ public class LogicAppError
     public required string WorkflowRunId { get; set; }
     public required string WorkflowName { get; set; }
     public DateTime TriggerTime { get; set; }
-    public Dictionary<string, object>? LeadData { get; set; }
+    public Dictionary<string, object>? TriggerData { get; set; }
     public List<ActionResult>? ErrorDetails { get; set; }
     public DateTime Timestamp { get; set; }
 }

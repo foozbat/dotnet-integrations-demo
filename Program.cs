@@ -395,7 +395,7 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
 
 // Endpoint: POST /webhooks/logic-app-error
 // Receives error notifications from Azure Logic Apps for any workflow failure
-app.MapPost("/webhooks/logic-apps/error", async (LogicAppError errorData, ILogger<Program> logger) =>
+app.MapPost("/webhooks/logic-app-error", async (LogicAppError errorData, ILogger<Program> logger) =>
 {
     logger.LogError("Logic App workflow error: {@errorData}", errorData);
 
@@ -417,7 +417,7 @@ app.MapPost("/webhooks/logic-apps/error", async (LogicAppError errorData, ILogge
             scope.SetTag("failed_actions", failedActionNames);
 
             scope.SetExtra("trigger_time", errorData.TriggerTime.ToString("o"));
-            scope.SetExtra("lead_data", System.Text.Json.JsonSerializer.Serialize(errorData.LeadData));
+            scope.SetExtra("trigger_data", System.Text.Json.JsonSerializer.Serialize(errorData.TriggerData));
             scope.SetExtra("all_action_results", System.Text.Json.JsonSerializer.Serialize(errorData.ErrorDetails));
 
             // Add breadcrumbs for each action in the workflow
@@ -434,8 +434,8 @@ app.MapPost("/webhooks/logic-apps/error", async (LogicAppError errorData, ILogge
                 );
             }
 
-            // Set user context if email available
-            if (errorData.LeadData?.TryGetValue("email", out var email) == true)
+            // Set user context if email is present in trigger data
+            if (errorData.TriggerData?.TryGetValue("email", out var email) == true)
             {
                 scope.User = new SentryUser { Email = email?.ToString() };
             }
