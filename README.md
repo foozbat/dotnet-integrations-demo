@@ -36,13 +36,11 @@ A real-world cloud integration platform demonstrating modern API-first architect
 ```
 Client (Postman / Swagger)
     ↓
-ASP.NET Core API
-    ├── Save Lead to Azure SQL
-    └── Trigger Logic App
+ASP.NET Core API (Create User)
+    ├── Validate and Save User to Azure SQL DB
+    └── Trigger Azure Logic App (Webhook)
          ├── HubSpot CRM
          │   ├── Create/Update Contact (with external_contact_id)
-         │   └── HubSpot Workflow (async)
-         │       └── Webhook → API: Update Lead.HubspotContactId
          ├── Stripe (if paid plan)
          │   └── Create Checkout Session
          └── Zapier Webhook
@@ -50,26 +48,26 @@ ASP.NET Core API
              ├── SMS (Twilio)
              └── Slack Notification
 
-User clicks payment link → Stripe Checkout → Payment Complete
-         ↓
-Stripe Webhook → API: Update Lead.StripeCustomerId
+User Clicks Payment Link
+    ↓
+Stripe Checkout (Payment Complete)
+    └── ASP.NET Core API (Stripe Webhook)
+         ├── Validate Stripe Request
+         └── Update Lead.StripeCustomerId, Lead.StripeSubscriptionId in Azure SQL DB
 ```
 
 ### HubSpot ↔ Azure DevOps Bidirectional Sync
 ```
 HubSpot Ticket Created
-         ↓
-Logic App (Webhook)
-         ↓
-Azure DevOps Issue Created
-    (tagged: HubSpotTicket-{id})
-         ↓
-DevOps Issue Resolved
-         ↓
-Logic App (Polling)
-         ↓
-HubSpot Ticket Note Added
-    ("Issue resolved by developers")
+    ↓
+Hubpot Workflow
+    └── Azure Logic App (Webhook)
+         └── Create Azure DevOps Issue (tagged: HubSpotTicket-{id})
+
+Azure DevOps Issue Closed
+    ↓
+Azure Logic App (Polling)
+    └── Add Note to HubSpot Ticket ("Issue resolved by developers")
 ```
 
 ## Design Decisions
