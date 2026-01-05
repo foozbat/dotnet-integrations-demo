@@ -7,11 +7,11 @@
             "type": "string"
         },
         "connections_visualstudioteamservices_externalid": {
-            "defaultValue": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/resourceGroups/integrations-demo/providers/Microsoft.Web/connections/visualstudioteamservices",
+            "defaultValue": "/subscriptions/{{SUBSCRIPTION_ID}}/resourceGroups/integrations-demo/providers/Microsoft.Web/connections/visualstudioteamservices",
             "type": "string"
         },
         "connections_keyvault_externalid": {
-            "defaultValue": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/resourceGroups/integrations-demo/providers/Microsoft.Web/connections/keyvault",
+            "defaultValue": "/subscriptions/{{SUBSCRIPTION_ID}}/resourceGroups/integrations-demo/providers/Microsoft.Web/connections/keyvault",
             "type": "string"
         }
     },
@@ -159,6 +159,34 @@
                                         "inputs",
                                         "outputs"
                                     ]
+                                }
+                            }
+                        },
+                        "Error_Handler_(HTTP_": {
+                            "runAfter": {
+                                "Main_Workflow": [
+                                    "Failed"
+                                ]
+                            },
+                            "type": "Http",
+                            "inputs": {
+                                "uri": "https://integrations-demo-api.azurewebsites.net/webhooks/logic-app-error",
+                                "method": "POST",
+                                "headers": {
+                                    "Content-Type": "application/json"
+                                },
+                                "body": {
+                                    "workflowRunId": "@{workflow().run.name}",
+                                    "workflowName": "@{workflow().name}",
+                                    "triggerTime": "@{trigger().startTime}",
+                                    "triggerData": "@triggerBody()",
+                                    "errorDetails": "@result('Main_Workflow')",
+                                    "timestamp": "@{utcNow()}"
+                                }
+                            },
+                            "runtimeConfiguration": {
+                                "contentTransfer": {
+                                    "transferMode": "Chunked"
                                 }
                             }
                         }

@@ -2,7 +2,7 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "workflows_integrations_demo_fzb_name": {
+        "workflows_integrations_demo_la_api_to_services_name": {
             "value": null
         },
         "connections_keyvault_externalid": {

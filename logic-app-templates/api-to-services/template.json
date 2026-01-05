@@ -1,0 +1,928 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_integrations_demo_la_api_to_services_name": {
+            "defaultValue": "integrations-demo-la-api-to-services",
+            "type": "string"
+        },
+        "connections_keyvault_externalid": {
+            "defaultValue": "/subscriptions/{{SUBSCRIPTION_ID}}/resourceGroups/integrations-demo/providers/Microsoft.Web/connections/keyvault",
+            "type": "string"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('workflows_integrations_demo_la_api_to_services_name')]",
+            "location": "centralus",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "When_an_HTTP_request_is_received": {
+                            "type": "Request",
+                            "kind": "Http"
+                        }
+                    },
+                    "actions": {
+                        "Main_Workflow": {
+                            "actions": {
+                                "If_Contact_is_in_HubSpot": {
+                                    "actions": {
+                                        "Update_HubSpot_Contact_External_ID_(HTTP)": {
+                                            "runAfter": {
+                                                "Set_HubSpot_Contact_ID_(existing)": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Http",
+                                            "inputs": {
+                                                "uri": "https://api.hubapi.com/crm/v3/objects/contacts/@{body('Parse_Contact_Search_JSON')?['results']?[0]?['properties']?['hs_object_id']}",
+                                                "method": "PATCH",
+                                                "headers": {
+                                                    "Authorization": "Bearer @{body('Get_HubSpot_Access_Token')?['value']}",
+                                                    "Content-Type": "application/json",
+                                                    "X-Correlation-Id": "@{variables('correlationId')}"
+                                                },
+                                                "body": {
+                                                    "properties": {
+                                                        "external_contact_id": "@{body('Parse_Backend_Request_JSON')?['contactId']}"
+                                                    }
+                                                }
+                                            },
+                                            "runtimeConfiguration": {
+                                                "contentTransfer": {
+                                                    "transferMode": "Chunked"
+                                                }
+                                            }
+                                        },
+                                        "Set_HubSpot_Contact_ID_(existing)": {
+                                            "type": "SetVariable",
+                                            "inputs": {
+                                                "name": "hubspotContactId",
+                                                "value": "@body('Parse_Contact_Search_JSON')?['results']?[0]?['properties']?['hs_object_id']"
+                                            }
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "Parse_Contact_Search_JSON": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "else": {
+                                        "actions": {
+                                            "Create_Hubspot_Contact_(HTTP_REST)": {
+                                                "type": "Http",
+                                                "inputs": {
+                                                    "uri": "https://api.hubapi.com/crm/v3/objects/contacts",
+                                                    "method": "POST",
+                                                    "headers": {
+                                                        "Authorization": "Bearer @{body('Get_HubSpot_Access_Token')?['value']}",
+                                                        "Content-Type": "application/json",
+                                                        "X-Correlation-Id": "@{variables('correlationId')}"
+                                                    },
+                                                    "body": {
+                                                        "properties": {
+                                                            "firstname": "@{body('Parse_Backend_Request_JSON')?['firstName']}",
+                                                            "lastname": "@{body('Parse_Backend_Request_JSON')?['lastName']}",
+                                                            "email": "@{body('Parse_Backend_Request_JSON')?['email']}",
+                                                            "phone": "@{body('Parse_Backend_Request_JSON')?['phone']}",
+                                                            "external_contact_id": "@body('Parse_Backend_Request_JSON')?['contactId']"
+                                                        }
+                                                    }
+                                                },
+                                                "runtimeConfiguration": {
+                                                    "contentTransfer": {
+                                                        "transferMode": "Chunked"
+                                                    }
+                                                }
+                                            },
+                                            "Set_HubSpot_Contact_ID_(new)": {
+                                                "runAfter": {
+                                                    "Parse_Hubspot_Create_JSON": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "SetVariable",
+                                                "inputs": {
+                                                    "name": "hubspotContactId",
+                                                    "value": "@body('Create_Hubspot_Contact_(HTTP_REST)')"
+                                                }
+                                            },
+                                            "Parse_Hubspot_Create_JSON": {
+                                                "runAfter": {
+                                                    "Create_Hubspot_Contact_(HTTP_REST)": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "ParseJson",
+                                                "inputs": {
+                                                    "content": "@body('Create_Hubspot_Contact_(HTTP_REST)')",
+                                                    "schema": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "properties": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "createdate": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "email": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "external_contact_id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "firstname": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_all_contact_vids": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_associated_target_accounts": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_currently_enrolled_in_prospecting_agent": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_email_domain": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_full_name_or_email": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_is_contact": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_is_unworked": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_lifecyclestage_lead_date": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_marketable_status": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_marketable_until_renewal": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_membership_has_accessed_private_content": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_object_id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_object_source": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_object_source_id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_object_source_label": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_pipeline": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_prospecting_agent_actively_enrolled_count": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_prospecting_agent_total_enrolled_count": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_registered_member": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_searchable_calculated_phone_number": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_sequences_actively_enrolled_count": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "lastmodifieddate": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "lastname": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "lifecyclestage": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "num_notes": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "phone": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            },
+                                                            "createdAt": {
+                                                                "type": "string"
+                                                            },
+                                                            "updatedAt": {
+                                                                "type": "string"
+                                                            },
+                                                            "archived": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "url": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "expression": {
+                                        "and": [
+                                            {
+                                                "greater": [
+                                                    "@body('Parse_Contact_Search_JSON')?['total']",
+                                                    0
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "type": "If"
+                                },
+                                "Parse_Backend_Request_JSON": {
+                                    "type": "ParseJson",
+                                    "inputs": {
+                                        "content": "@triggerBody()",
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "firstName": {
+                                                    "type": "string"
+                                                },
+                                                "lastName": {
+                                                    "type": "string"
+                                                },
+                                                "email": {
+                                                    "type": "string"
+                                                },
+                                                "phone": {
+                                                    "type": "string"
+                                                },
+                                                "contactId": {
+                                                    "type": "string"
+                                                },
+                                                "hubspotContactId": {
+                                                    "type": "integer"
+                                                },
+                                                "plan": {
+                                                    "type": "string"
+                                                },
+                                                "createdAt": {
+                                                    "type": "string"
+                                                },
+                                                "updatedAt": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "If_paid_subscriber": {
+                                    "actions": {
+                                        "Get_Stripe_Secret_Key": {
+                                            "type": "ApiConnection",
+                                            "inputs": {
+                                                "host": {
+                                                    "connection": {
+                                                        "name": "@parameters('$connections')['keyvault']['connectionId']"
+                                                    }
+                                                },
+                                                "method": "get",
+                                                "path": "/secrets/@{encodeURIComponent('stripe-api-key')}/value"
+                                            },
+                                            "runtimeConfiguration": {
+                                                "secureData": {
+                                                    "properties": [
+                                                        "inputs",
+                                                        "outputs"
+                                                    ]
+                                                }
+                                            }
+                                        },
+                                        "Get_Stripe_Price_ID": {
+                                            "runAfter": {
+                                                "Get_Stripe_Secret_Key": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "ApiConnection",
+                                            "inputs": {
+                                                "host": {
+                                                    "connection": {
+                                                        "name": "@parameters('$connections')['keyvault']['connectionId']"
+                                                    }
+                                                },
+                                                "method": "get",
+                                                "path": "/secrets/@{encodeURIComponent('stripe-price-id')}/value"
+                                            },
+                                            "runtimeConfiguration": {
+                                                "secureData": {
+                                                    "properties": [
+                                                        "inputs",
+                                                        "outputs"
+                                                    ]
+                                                }
+                                            }
+                                        },
+                                        "Create_Stripe_Checkout_Session_(HTTP)": {
+                                            "runAfter": {
+                                                "Get_Stripe_Price_ID": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Http",
+                                            "inputs": {
+                                                "uri": "https://api.stripe.com/v1/checkout/sessions",
+                                                "method": "POST",
+                                                "headers": {
+                                                    "Authorization": "Bearer @{body('Get_Stripe_Secret_Key')?['value']}",
+                                                    "Content-Type": "application/x-www-form-urlencoded"
+                                                },
+                                                "body": "mode=subscription&line_items[0][price]=@{body('Get_Stripe_Price_ID')?['value']}&line_items[0][quantity]=1&customer_email=@{encodeUriComponent(body('Parse_Backend_Request_JSON')?['email'])}&client_reference_id=@{body('Parse_Backend_Request_JSON')?['contactId']}&success_url=https://integrations-demo-api.azurewebsites.net/payment-success&cancel_url=https://integrations-demo-api.azurewebsites.net/payment-cancelled"
+                                            },
+                                            "runtimeConfiguration": {
+                                                "contentTransfer": {
+                                                    "transferMode": "Chunked"
+                                                }
+                                            }
+                                        },
+                                        "Parse_Stripe_Response": {
+                                            "runAfter": {
+                                                "Create_Stripe_Checkout_Session_(HTTP)": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "ParseJson",
+                                            "inputs": {
+                                                "content": "@body('Create_Stripe_Checkout_Session_(HTTP)')",
+                                                "schema": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "object": {
+                                                            "type": "string"
+                                                        },
+                                                        "adaptive_pricing": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "enabled": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            }
+                                                        },
+                                                        "after_expiration": {},
+                                                        "allow_promotion_codes": {},
+                                                        "amount_subtotal": {
+                                                            "type": "integer"
+                                                        },
+                                                        "amount_total": {
+                                                            "type": "integer"
+                                                        },
+                                                        "automatic_tax": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "enabled": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "liability": {},
+                                                                "provider": {},
+                                                                "status": {}
+                                                            }
+                                                        },
+                                                        "billing_address_collection": {},
+                                                        "branding_settings": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "background_color": {
+                                                                    "type": "string"
+                                                                },
+                                                                "border_style": {
+                                                                    "type": "string"
+                                                                },
+                                                                "button_color": {
+                                                                    "type": "string"
+                                                                },
+                                                                "display_name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "font_family": {
+                                                                    "type": "string"
+                                                                },
+                                                                "icon": {},
+                                                                "logo": {}
+                                                            }
+                                                        },
+                                                        "cancel_url": {
+                                                            "type": "string"
+                                                        },
+                                                        "client_reference_id": {
+                                                            "type": "string"
+                                                        },
+                                                        "client_secret": {},
+                                                        "collected_information": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "business_name": {},
+                                                                "individual_name": {},
+                                                                "shipping_details": {}
+                                                            }
+                                                        },
+                                                        "consent": {},
+                                                        "consent_collection": {},
+                                                        "created": {
+                                                            "type": "integer"
+                                                        },
+                                                        "currency": {
+                                                            "type": "string"
+                                                        },
+                                                        "currency_conversion": {},
+                                                        "custom_fields": {
+                                                            "type": "array"
+                                                        },
+                                                        "custom_text": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "after_submit": {},
+                                                                "shipping_address": {},
+                                                                "submit": {},
+                                                                "terms_of_service_acceptance": {}
+                                                            }
+                                                        },
+                                                        "customer": {},
+                                                        "customer_account": {},
+                                                        "customer_creation": {
+                                                            "type": "string"
+                                                        },
+                                                        "customer_details": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "address": {},
+                                                                "business_name": {},
+                                                                "email": {
+                                                                    "type": "string"
+                                                                },
+                                                                "individual_name": {},
+                                                                "name": {},
+                                                                "phone": {},
+                                                                "tax_exempt": {
+                                                                    "type": "string"
+                                                                },
+                                                                "tax_ids": {}
+                                                            }
+                                                        },
+                                                        "customer_email": {
+                                                            "type": "string"
+                                                        },
+                                                        "discounts": {
+                                                            "type": "array"
+                                                        },
+                                                        "expires_at": {
+                                                            "type": "integer"
+                                                        },
+                                                        "invoice": {},
+                                                        "invoice_creation": {},
+                                                        "livemode": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "locale": {},
+                                                        "metadata": {
+                                                            "type": "object",
+                                                            "properties": {}
+                                                        },
+                                                        "mode": {
+                                                            "type": "string"
+                                                        },
+                                                        "origin_context": {},
+                                                        "payment_intent": {},
+                                                        "payment_link": {},
+                                                        "payment_method_collection": {
+                                                            "type": "string"
+                                                        },
+                                                        "payment_method_configuration_details": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "parent": {}
+                                                            }
+                                                        },
+                                                        "payment_method_options": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "card": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "request_three_d_secure": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "payment_method_types": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "payment_status": {
+                                                            "type": "string"
+                                                        },
+                                                        "permissions": {},
+                                                        "phone_number_collection": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "enabled": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            }
+                                                        },
+                                                        "recovered_from": {},
+                                                        "saved_payment_method_options": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "allow_redisplay_filters": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "payment_method_remove": {
+                                                                    "type": "string"
+                                                                },
+                                                                "payment_method_save": {}
+                                                            }
+                                                        },
+                                                        "setup_intent": {},
+                                                        "shipping_address_collection": {},
+                                                        "shipping_cost": {},
+                                                        "shipping_details": {},
+                                                        "shipping_options": {
+                                                            "type": "array"
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "submit_type": {},
+                                                        "subscription": {},
+                                                        "success_url": {
+                                                            "type": "string"
+                                                        },
+                                                        "total_details": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "amount_discount": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "amount_shipping": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "amount_tax": {
+                                                                    "type": "integer"
+                                                                }
+                                                            }
+                                                        },
+                                                        "ui_mode": {
+                                                            "type": "string"
+                                                        },
+                                                        "url": {
+                                                            "type": "string"
+                                                        },
+                                                        "wallet_options": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "Parse_Backend_Request_JSON": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "else": {
+                                        "actions": {}
+                                    },
+                                    "expression": {
+                                        "and": [
+                                            {
+                                                "equals": [
+                                                    "@body('Parse_Backend_Request_JSON')?['plan']",
+                                                    "paid"
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "type": "If"
+                                },
+                                "Get_Zapier_Webhook_URL": {
+                                    "runAfter": {
+                                        "If_paid_subscriber": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "ApiConnection",
+                                    "inputs": {
+                                        "host": {
+                                            "connection": {
+                                                "name": "@parameters('$connections')['keyvault']['connectionId']"
+                                            }
+                                        },
+                                        "method": "get",
+                                        "path": "/secrets/@{encodeURIComponent('zapier-webhook-url')}/value"
+                                    },
+                                    "runtimeConfiguration": {
+                                        "secureData": {
+                                            "properties": [
+                                                "inputs",
+                                                "outputs"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "Trigger_Zappier_Webhook_(HTTP)": {
+                                    "runAfter": {
+                                        "Get_Zapier_Webhook_URL": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Http",
+                                    "inputs": {
+                                        "uri": "https://hooks.zapier.com/hooks/catch/25741920/ua9023q/?correlationId=@{variables('correlationId')}",
+                                        "method": "POST",
+                                        "body": {
+                                            "firstName": "@{body('Parse_Backend_Request_JSON')?['firstName']}",
+                                            "lastName": "@{body('Parse_Backend_Request_JSON')?['lastName']}",
+                                            "email": "@{body('Parse_Backend_Request_JSON')?['email']}",
+                                            "phone": "@{body('Parse_Backend_Request_JSON')?['phone']}",
+                                            "contactId": "@{body('Parse_Backend_Request_JSON')?['contactId']}",
+                                            "checkoutUrl": "@{body('Parse_Stripe_Response')?['url']}"
+                                        }
+                                    },
+                                    "runtimeConfiguration": {
+                                        "contentTransfer": {
+                                            "transferMode": "Chunked"
+                                        }
+                                    }
+                                },
+                                "Search_for_Hubspot_Contact_by_Email_(HTTP)": {
+                                    "runAfter": {
+                                        "Get_HubSpot_Access_Token": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Http",
+                                    "inputs": {
+                                        "uri": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+                                        "method": "POST",
+                                        "headers": {
+                                            "Authorization": "Bearer @{body('Get_HubSpot_Access_Token')?['value']}",
+                                            "Content-Type": "application/json",
+                                            "X-Correlation-Id": "@{variables('correlationId')}"
+                                        },
+                                        "body": {
+                                            "filterGroups": [
+                                                {
+                                                    "filters": [
+                                                        {
+                                                            "propertyName": "email",
+                                                            "operator": "EQ",
+                                                            "value": "@{body('Parse_Backend_Request_JSON')?['email']}"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "runtimeConfiguration": {
+                                        "contentTransfer": {
+                                            "transferMode": "Chunked"
+                                        }
+                                    }
+                                },
+                                "Get_HubSpot_Access_Token": {
+                                    "runAfter": {
+                                        "Parse_Backend_Request_JSON": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "ApiConnection",
+                                    "inputs": {
+                                        "host": {
+                                            "connection": {
+                                                "name": "@parameters('$connections')['keyvault']['connectionId']"
+                                            }
+                                        },
+                                        "method": "get",
+                                        "path": "/secrets/@{encodeURIComponent('hubspot-api-access-token')}/value"
+                                    },
+                                    "runtimeConfiguration": {
+                                        "secureData": {
+                                            "properties": [
+                                                "inputs",
+                                                "outputs"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "Parse_Contact_Search_JSON": {
+                                    "runAfter": {
+                                        "Search_for_Hubspot_Contact_by_Email_(HTTP)": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "ParseJson",
+                                    "inputs": {
+                                        "content": "@body('Search_for_Hubspot_Contact_by_Email_(HTTP)')",
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "results": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "properties": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "createdate": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "email": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "firstname": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "hs_object_id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "lastmodifieddate": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "lastname": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            },
+                                                            "createdAt": {
+                                                                "type": "string"
+                                                            },
+                                                            "updatedAt": {
+                                                                "type": "string"
+                                                            },
+                                                            "archived": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "url": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "properties",
+                                                            "createdAt",
+                                                            "updatedAt",
+                                                            "archived",
+                                                            "url"
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "Update_App_Contact_HubSpot_ID": {
+                                    "runAfter": {
+                                        "If_Contact_is_in_HubSpot": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Http",
+                                    "inputs": {
+                                        "uri": "https://integrations-demo-api.azurewebsites.net/api/users/@{body('Parse_Backend_Request_JSON')?['id']}",
+                                        "method": "PATCH",
+                                        "headers": {
+                                            "X-Correlation-Id": "@{variables('correlationId')}"
+                                        },
+                                        "body": {
+                                            "hubspotContactId": "@{variables('hubspotContactId')}"
+                                        }
+                                    },
+                                    "runtimeConfiguration": {
+                                        "contentTransfer": {
+                                            "transferMode": "Chunked"
+                                        }
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "Init_Variables": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Scope"
+                        },
+                        "Error_Handler_(HTTP)": {
+                            "runAfter": {
+                                "Main_Workflow": [
+                                    "Failed"
+                                ]
+                            },
+                            "type": "Http",
+                            "inputs": {
+                                "uri": "https://integrations-demo-api.azurewebsites.net/webhooks/logic-app-error",
+                                "method": "POST",
+                                "headers": {
+                                    "Content-Type": "application/json"
+                                },
+                                "body": {
+                                    "workflowRunId": "@{workflow().run.name}",
+                                    "workflowName": "@{workflow().name}",
+                                    "triggerTime": "@{trigger().startTime}",
+                                    "triggerData": "@triggerBody()",
+                                    "errorDetails": "@result('Main_Workflow')",
+                                    "timestamp": "@{utcNow()}"
+                                }
+                            },
+                            "runtimeConfiguration": {
+                                "contentTransfer": {
+                                    "transferMode": "Chunked"
+                                }
+                            }
+                        },
+                        "Init_Variables": {
+                            "runAfter": {},
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "correlationId",
+                                        "type": "string",
+                                        "value": "@{triggerOutputs()?['headers']?['x-correlation-id']}"
+                                    },
+                                    {
+                                        "name": "hubspotContactId",
+                                        "type": "string"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "keyvault": {
+                                "id": "/subscriptions/b35c9371-3ef8-4b8c-8463-9acb834811c7/providers/Microsoft.Web/locations/centralus/managedApis/keyvault",
+                                "connectionId": "[parameters('connections_keyvault_externalid')]",
+                                "connectionName": "keyvault",
+                                "connectionProperties": {
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
