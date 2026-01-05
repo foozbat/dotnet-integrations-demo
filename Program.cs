@@ -240,6 +240,28 @@ app.MapPatch("/api/users/{id}", async (AzureSQLDbContext db, int id, LeadUpdateR
 .Produces(400)
 .Produces(404);
 
+// Endpoint: DELETE /api/users/{id}
+// Deletes an existing user
+app.MapDelete("/api/users/{id}", async (AzureSQLDbContext db, int id, ILogger<Program> logger) =>
+{
+    Lead? lead = await db.Leads.FindAsync(id);
+
+    if (lead == null)
+    {
+        return Results.NotFound(new { Message = "User not found." });
+    }
+
+    db.Leads.Remove(lead);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { Message = "User deleted successfully.", UserId = id });
+})
+.WithName("DeleteUser")
+.WithSummary("Delete a user")
+.WithDescription("Permanently deletes a user from the database.")
+.Produces(200)
+.Produces(404);
+
 /**
  * WEBHOOK ENDPOINTS
  */
