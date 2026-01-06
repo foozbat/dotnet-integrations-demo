@@ -86,27 +86,29 @@ Azure Logic App (Polling)
 </details>
 
 <details>
-<summary>Azure Logic App Workflow</summary>
+<summary>Create User Logic Apps Workflow</summary>
 
 ![Azure Logic App](screenshots/azure-logic-app.jpg)
 </details>
 
 <details>
-<summary>HubSpot Automation Workflow</summary>
-
-![HubSpot Workflow](screenshots/hubspot-workflow.jpg)
-</details>
-
-<details>
 <summary>HubSpot ↔ Azure DevOps Sync</summary>
 
-**HubSpot to DevOps:**
-- Webhook trigger from HubSpot ticket creation
-- Creates Azure DevOps Issue with `HubSpotTicket-{id}` tag
+### HubSpot → DevOps
+1. Webhook trigger from HubSpot ticket creation:
 
-**DevOps to HubSpot:**
-- Polls DevOps for work item updates (3 min interval)
-- Adds note to HubSpot ticket when issue resolved
+![HubSpot Workflow](screenshots/hubspot-workflow.jpg)
+
+2. Creates Azure DevOps Issue with `HubSpotTicket-{id}` tag:
+
+![Hubspot to Devops Workflow](screenshots/logicapp-hubspot-to-devops.jpg)
+
+### DevOps → HubSpot
+1. Polls Azure DevOps for work item updates
+2. Adds note to HubSpot ticket when issue resolved
+
+![Devops to Hubspot Workflow](screenshots/logicapp-devops-to-hubspot.jpg)
+
 </details>
 
 <details>
