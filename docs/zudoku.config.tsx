@@ -55,6 +55,7 @@ const config: ZudokuConfig = {
     },
   ],
   redirects: [{ from: "/", to: "/introduction" }],
+  basePath: "/dotnet-integrations-demo",
   apis: [
     {
       type: "file",
