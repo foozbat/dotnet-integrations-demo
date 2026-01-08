@@ -1,10 +1,14 @@
 [![CI](https://github.com/foozbat/dotnet-integrations-demo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/foozbat/dotnet-integrations-demo/actions/workflows/ci.yml)
+[![CD](https://github.com/foozbat/dotnet-integrations-demo/actions/workflows/deploy-to-azure.yml/badge.svg?branch=main)](https://github.com/foozbat/dotnet-integrations-demo/actions/workflows/deploy-to-azure.yml)
+[![docs](https://img.shields.io/badge/docs-live-blue?logo=github)](https://foozbat.github.io/dotnet-integrations-demo/)
 
 # .NET Integrations Demo
 
 A real-world cloud integration platform demonstrating modern API-first architecture with multi-channel customer engagement workflows. This project showcases seamless integration between CRM systems, notification services, and cloud automation tools.
 
-<b>A live demo is available upon request.</b>
+### 📚 **[View Full Documentation →](https://foozbat.github.io/dotnet-integrations-demo/)**
+
+---
 
 ## Tech Stack
 
