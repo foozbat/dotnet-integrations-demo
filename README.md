@@ -16,7 +16,7 @@ A real-world cloud integration platform demonstrating modern API-first architect
 
 ### Integration & Automation
 - **Azure Logic Apps** - Serverless workflow orchestration
-  - API → HubSpot/Stripe/Zapier (lead signup)
+  - API → HubSpot/Stripe/Zapier (user signup)
   - HubSpot → Azure DevOps (ticket sync)
   - Azure DevOps → HubSpot (status updates)
 - **Azure Key Vault** - Secure secret storage
@@ -32,7 +32,7 @@ A real-world cloud integration platform demonstrating modern API-first architect
 
 ## Architecture
 
-### Lead Signup Flow
+### User Signup Flow
 ```
 Client (Postman / Swagger)
     ↓
@@ -53,7 +53,7 @@ User Clicks Payment Link
 Stripe Checkout (Payment Complete)
     └── ASP.NET Core API (Stripe Webhook)
          ├── Validate Stripe Request
-         └── Update Lead.StripeCustomerId, Lead.StripeSubscriptionId in Azure SQL DB
+         └── Update User.StripeCustomerId, User.StripeSubscriptionId in Azure SQL DB
 ```
 
 ### HubSpot ↔ Azure DevOps Bidirectional Sync
@@ -121,7 +121,7 @@ Azure Logic App (Polling)
 
 ### API Endpoints
 
-**Lead Signup:**
+**User Signup:**
 ```http
 POST /api/users
 Content-Type: application/json
@@ -150,7 +150,7 @@ Content-Type: application/json
 ### Logic App Templates
 
 Three ARM templates available in `logic-app-templates/`:
-- **api-to-hubspot-stripe-zapier** - Lead signup orchestration
+- **api-to-hubspot-stripe-zapier** - User signup orchestration
 - **hubspot-to-devops** - Creates DevOps issues from HubSpot tickets
 - **devops-to-hubspot** - Syncs DevOps status back to HubSpot
 

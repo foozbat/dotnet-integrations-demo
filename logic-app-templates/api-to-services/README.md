@@ -4,12 +4,11 @@ This directory contains an Azure Resource Manager (ARM) template exported from a
 
 ## What This Logic App Does
 
-1. **Receives HTTP webhook** from your .NET API when a new lead signs up
-2. **Parses the lead data** (firstName, lastName, email, phone, contactId, plan)
+1. **Receives HTTP webhook** from your .NET API when a new user signs up
+2. **Parses the user data** (firstName, lastName, email, phone, contactId, plan)
 3. **Creates/updates contact in HubSpot** (with external_contact_id custom property)
 4. **Creates Stripe checkout session** (if plan is "paid")
-5. **Triggers Zapier webhook** with all lead data + checkout URL for notifications (email/SMS/Slack)
-
+5. **Triggers Zapier webhook** with all user data + checkout URL for notifications (email/SMS/Slack)
 ## Prerequisites
 
 - Azure subscription with permissions to create Logic Apps and API connections

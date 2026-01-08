@@ -147,18 +147,18 @@ app.MapGet("/", () => Results.Ok(new { status = "healthy", message = "Dotnet Int
 .ExcludeFromDescription();
 
 // Endpoint: POST /api/users
-// Captures new lead information, validates data, stores in Azure SQL Database, and triggers Logic Apps workflow
-app.MapPost("/api/users", async (AzureSQLDbContext db, LeadCreateRequest request, ILogger<Program> logger) =>
+// Captures new user information, validates data, stores in Azure SQL Database, and triggers Logic Apps workflow
+app.MapPost("/api/users", async (AzureSQLDbContext db, UserCreateRequest request, ILogger<Program> logger) =>
 {
     // Check for duplicate email
-    var emailExists = await db.Leads.AnyAsync(l => l.Email == request.Email);
+    var emailExists = await db.Users.AnyAsync(u => u.Email == request.Email);
     if (emailExists)
     {
         return Results.BadRequest(new { Message = "A user with this email already exists." });
     }
 
-    // Create new lead from request
-    Lead lead = new()
+    // Create new user from request
+    User user = new()
     {
         FirstName = request.FirstName,
         LastName = request.LastName,
@@ -168,7 +168,7 @@ app.MapPost("/api/users", async (AzureSQLDbContext db, LeadCreateRequest request
     };
 
     // Save to db
-    db.Leads.Add(lead);
+    db.Users.Add(user);
     await db.SaveChangesAsync();
 
     // Send webhook to Azure Logic Apps in the background
@@ -179,9 +179,9 @@ app.MapPost("/api/users", async (AzureSQLDbContext db, LeadCreateRequest request
         Timeout = TimeSpan.FromSeconds(30),
         Logger = logger
     };
-    _ = Task.Run(async () => await webhook.SendAsync(lead));
+    _ = Task.Run(async () => await webhook.SendAsync(user));
 
-    return Results.Ok(new { Message = "Signup successful.", User = lead });
+    return Results.Ok(new { Message = "Signup successful.", User = user });
 })
 .WithName("CreateUserSignup")
 .WithSummary("Create a new user signup")
@@ -191,45 +191,45 @@ app.MapPost("/api/users", async (AzureSQLDbContext db, LeadCreateRequest request
 
 // Endpoint: GET /api/users
 // Returns a list of all users stored in the database.
-app.MapGet("/api/users", async (AzureSQLDbContext db) => await db.Leads.ToListAsync())
+app.MapGet("/api/users", async (AzureSQLDbContext db) => await db.Users.ToListAsync())
 .WithName("GetUsers")
 .WithSummary("Get all users")
 .WithDescription("Returns a list of all users stored in the database.")
-.Produces<List<Lead>>(200);
+.Produces<List<User>>(200);
 
 // Endpoint: PATCH /api/users/{id}
 // Updates specific properties of an existing user
-app.MapPatch("/api/users/{id}", async (AzureSQLDbContext db, int id, LeadUpdateRequest request, ILogger<Program> logger) =>
+app.MapPatch("/api/users/{id}", async (AzureSQLDbContext db, int id, UserUpdateRequest request, ILogger<Program> logger) =>
 {
-    Lead? lead = await db.Leads.FindAsync(id);
+    User? user = await db.Users.FindAsync(id);
 
-    if (lead == null)
+    if (user == null)
     {
         return Results.NotFound(new { Message = "User not found." });
     }
 
     // Update only the properties that are provided (non-null)
-    lead.FirstName = request.FirstName ?? lead.FirstName;
-    lead.LastName = request.LastName ?? lead.LastName;
-    lead.Phone = request.Phone ?? lead.Phone;
-    lead.Plan = request.Plan ?? lead.Plan;
-    lead.HubspotContactId = request.HubspotContactId ?? lead.HubspotContactId;
+    user.FirstName = request.FirstName ?? user.FirstName;
+    user.LastName = request.LastName ?? user.LastName;
+    user.Phone = request.Phone ?? user.Phone;
+    user.Plan = request.Plan ?? user.Plan;
+    user.HubspotContactId = request.HubspotContactId ?? user.HubspotContactId;
 
     if (request.Email != null)
     {
         // Check for duplicate email (excluding current user)
-        var emailExists = await db.Leads.AnyAsync(l => l.Email == request.Email && l.Id != id);
+        var emailExists = await db.Users.AnyAsync(u => u.Email == request.Email && u.Id != id);
         if (emailExists)
         {
             return Results.BadRequest(new { Message = "A user with this email already exists." });
         }
 
-        lead.Email = request.Email;
+        user.Email = request.Email;
     }
 
     await db.SaveChangesAsync();
 
-    return Results.Ok(new { Message = "User updated successfully.", User = lead });
+    return Results.Ok(new { Message = "User updated successfully.", User = user });
 })
 .WithName("UpdateUser")
 .WithSummary("Update user properties")
@@ -242,14 +242,14 @@ app.MapPatch("/api/users/{id}", async (AzureSQLDbContext db, int id, LeadUpdateR
 // Deletes an existing user
 app.MapDelete("/api/users/{id}", async (AzureSQLDbContext db, int id, ILogger<Program> logger) =>
 {
-    Lead? lead = await db.Leads.FindAsync(id);
+    User? user = await db.Users.FindAsync(id);
 
-    if (lead == null)
+    if (user == null)
     {
         return Results.NotFound(new { Message = "User not found." });
     }
 
-    db.Leads.Remove(lead);
+    db.Users.Remove(user);
     await db.SaveChangesAsync();
 
     return Results.Ok(new { Message = "User deleted successfully.", UserId = id });
@@ -265,34 +265,34 @@ app.MapDelete("/api/users/{id}", async (AzureSQLDbContext db, int id, ILogger<Pr
  */
 
 // Endpoint: POST /webhooks/hubspot
-// Receives HubSpot contact registration data and updates the corresponding lead in the database.
+// Receives HubSpot contact registration data and updates the corresponding user in the database.
 app.MapPost("/webhooks/hubspot", async (AzureSQLDbContext db, HubspotWebhookEvent hubspotData, ILogger<Program> logger) =>
 {
     // LOG THE RAW JSON RECEIVED
     logger.LogInformation("Received HubSpot contact update webhook: {@hubspotData}", hubspotData);
 
-    // update the lead with a HubspotContactId if it exists based on external_contact_id => ContactId mapping
+    // update the user with a HubspotContactId if it exists based on external_contact_id => ContactId mapping
     if (string.IsNullOrEmpty(hubspotData.ExternalContactId) || hubspotData.HubspotContactId == 0)
     {
         return Results.BadRequest(new { Message = "ExternalContactId and HubspotContactId are required." });
     }
 
-    Lead? lead = await db.Leads.FirstOrDefaultAsync(l => l.ContactId == hubspotData.ExternalContactId);
+    User? user = await db.Users.FirstOrDefaultAsync(u => u.ContactId == hubspotData.ExternalContactId);
 
-    if (lead == null)
+    if (user == null)
     {
-        return Results.NotFound(new { Message = "Lead not found with the specified ContactId." });
+        return Results.NotFound(new { Message = "User not found with the specified ContactId." });
     }
 
-    lead.HubspotContactId = hubspotData.HubspotContactId;
-    lead.UpdatedAt = DateTime.UtcNow;
+    user.HubspotContactId = hubspotData.HubspotContactId;
+    user.UpdatedAt = DateTime.UtcNow;
     await db.SaveChangesAsync();
 
-    return Results.Ok(new { Message = "Hubspot contact registered.", lead.Id, lead.ContactId });
+    return Results.Ok(new { Message = "Hubspot contact registered.", user.Id, user.ContactId });
 })
 .WithName("UpdateHubspotContactId")
-.WithSummary("Update HubSpot Contact ID for a lead")
-.WithDescription("Updates a lead with their HubSpot contact ID using the external contact ID for mapping.")
+.WithSummary("Update HubSpot Contact ID for a user")
+.WithDescription("Updates a user with their HubSpot contact ID using the external contact ID for mapping.")
 .Produces(200)
 .Produces(400)
 .Produces(404);
@@ -370,25 +370,25 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
         return Results.BadRequest(new { Message = "Customer ID and email are required." });
     }
 
-    Lead? lead = await db.Leads.FirstOrDefaultAsync(l => l.Email == customerEmail);
-    if (lead == null)
+    User? user = await db.Users.FirstOrDefaultAsync(u => u.Email == customerEmail);
+    if (user == null)
     {
-        return Results.NotFound(new { Message = "Lead not found with the specified email." });
+        return Results.NotFound(new { Message = "User not found with the specified email." });
     }
 
-    // Update lead with Stripe subscription info
-    lead.StripeCustomerId = customerId;
-    lead.SubscriptionStatus = session.Status ?? "complete";
-    lead.UpdatedAt = DateTime.UtcNow;
+    // Update user with Stripe subscription info
+    user.StripeCustomerId = customerId;
+    user.SubscriptionStatus = session.Status ?? "complete";
+    user.UpdatedAt = DateTime.UtcNow;
     await db.SaveChangesAsync();
 
-    logger.LogInformation("Updated lead {LeadId} with Stripe customer {CustomerId}", lead.Id, customerId);
+    logger.LogInformation("Updated user {UserId} with Stripe customer {CustomerId}", user.Id, customerId);
 
-    return Results.Ok(new { Message = "Payment processed successfully.", lead.Id, lead.StripeCustomerId });
+    return Results.Ok(new { Message = "Payment processed successfully.", user.Id, user.StripeCustomerId });
 })
 .WithName("StripeCheckoutCompleted")
 .WithSummary("Handle Stripe checkout completion")
-.WithDescription("Receives Stripe webhook when a checkout session completes and updates the lead with customer ID.")
+.WithDescription("Receives Stripe webhook when a checkout session completes and updates the user with customer ID.")
 .Produces(200)
 .Produces(400)
 .Produces(404);

@@ -5,7 +5,7 @@ namespace IntegrationsDemo;
 
 public class AzureSQLDbContext(DbContextOptions<AzureSQLDbContext> options) : DbContext(options)
 {
-    public DbSet<Lead> Leads { get; set; }
+    public DbSet<User> Users { get; set; }
 
     public override int SaveChanges()
     {
@@ -21,10 +21,10 @@ public class AzureSQLDbContext(DbContextOptions<AzureSQLDbContext> options) : Db
 
     private void UpdateTimestamps()
     {
-        IEnumerable<EntityEntry<Lead>> entries = ChangeTracker.Entries<Lead>();
+        IEnumerable<EntityEntry<User>> entries = ChangeTracker.Entries<User>();
         DateTime now = DateTime.UtcNow;
 
-        foreach (EntityEntry<Lead> entry in entries)
+        foreach (EntityEntry<User> entry in entries)
         {
             if (entry.State == EntityState.Added)
             {

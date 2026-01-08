@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace IntegrationsDemo;
 
 [Index(nameof(ContactId))]
-public class Lead
+public class User
 {
     [Key]
     public int Id { get; set; }

@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace IntegrationsDemo;
 
-public class LeadCreateRequest
+public class UserCreateRequest
 {
     [Required]
     [MaxLength(200)]

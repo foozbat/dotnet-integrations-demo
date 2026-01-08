@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace IntegrationsDemo;
 
-public class LeadUpdateRequest
+public class UserUpdateRequest
 {
     [MaxLength(200)]
     public string? FirstName { get; set; }
