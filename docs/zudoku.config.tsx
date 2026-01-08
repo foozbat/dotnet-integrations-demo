@@ -34,6 +34,14 @@ const config: ZudokuConfig = {
         },
         {
           type: "category",
+          label: "Integrations",
+          icon: "workflow",
+          items: [
+            "/api-to-services"
+          ],
+        },
+        {
+          type: "category",
           label: "Useful Links",
           collapsible: false,
           icon: "link",
