@@ -1,0 +1,161 @@
+---
+title: .NET Integrations Demo
+---
+
+A real-world cloud integration platform demonstrating modern API-first architecture with multi-channel customer engagement workflows. This project showcases seamless integration between CRM systems, notification services, and cloud automation tools.
+
+## Tech Stack
+
+### Backend
+- **.NET 10** - ASP.NET Core Web API with minimal APIs.
+- **Swagger/OpenAPI** 
+- **Entity Framework Core 10**
+- **Azure SQL Database**
+
+### Integration & Automation
+- **Azure Logic Apps** - Serverless workflow orchestration
+  - API → HubSpot/Stripe/Zapier (user signup)
+  - HubSpot → Azure DevOps (ticket sync)
+  - Azure DevOps → HubSpot (status updates)
+- **Azure Key Vault** - Secure secret storage
+- **HubSpot CRM** - Contact and ticket management
+- **Azure DevOps** - Work item tracking
+- **Stripe** - Payment processing
+- **Zapier** - Multi-channel notifications (SendGrid, Twilio, Slack)
+- **Sentry** - Error monitoring and alerting
+
+### DevOps
+- **GitHub Actions** - CI/CD pipeline
+- **Azure App Service** - PaaS hosting
+
+## Architecture Overview
+
+<Mermaid chart={`
+%%{init: {'theme':'base', 'themeVariables': { 'fontSize':'18px'}}}%%
+graph TB
+    subgraph Azure["Azure Resource Group - Central US"]
+        subgraph Compute["Compute Layer"]
+            API["App Service
+            integrations-demo-api
+            .NET 10 Web API"]
+            ASP["App Service Plan
+            integrations-demo-appsvcplan"]
+        end
+        
+        subgraph Gateway["API Gateway"]
+            APIM["API Management
+            integrations-demo-apim
+            Gateway & Auth"]
+        end
+        
+        subgraph Data["Data Layer"]
+            SQL["SQL Server
+            integrations-demo-fzb-sql"]
+            DB[("Database: users
+            User records & mappings")]
+        end
+        
+        subgraph Security["Security"]
+            KV["Key Vault
+            integrations-demo-vault
+            Secrets & API Keys"]
+        end
+        
+        subgraph Workflows["Workflow Automation"]
+            LA1["Logic App
+            api-to-services
+            User Signup Flow"]
+            LA2["Logic App
+            hubspot-to-devops
+            Ticket to Issue"]
+            LA3["Logic App
+            devops-to-hubspot
+            Status Updates"]
+        end
+    end
+    
+    subgraph External["External Services"]
+        HS["HubSpot CRM"]
+        STRIPE["Stripe Payments"]
+        ZAP["Zapier"]
+        DEVOPS["Azure DevOps"]
+    end
+    
+    APIM --> API
+    APIM --> LA2
+    API --> SQL
+    SQL --> DB
+    API --> KV
+    LA1 --> KV
+    LA2 --> KV
+    LA3 --> KV
+    
+    API --> LA1
+    LA1 --> HS
+    LA1 --> STRIPE
+    LA1 --> ZAP
+    
+    HS --> APIM
+    STRIPE --> APIM
+    LA2 --> DEVOPS
+    LA3 --> DEVOPS
+    LA3 --> HS
+    LA3 --> HS
+    
+    style API fill:#0078d4,color:#fff,stroke:#005a9e,stroke-width:3px
+    style APIM fill:#0078d4,color:#fff,stroke:#005a9e,stroke-width:3px
+    style SQL fill:#0078d4,color:#fff,stroke:#005a9e,stroke-width:3px
+    style KV fill:#ff6b00,color:#fff,stroke:#cc5500,stroke-width:3px
+    style LA1 fill:#00bcf2,color:#000,stroke:#0095c7,stroke-width:3px
+    style LA2 fill:#00bcf2,color:#000,stroke:#0095c7,stroke-width:3px
+    style LA3 fill:#00bcf2,color:#000,stroke:#0095c7,stroke-width:3px
+    style HS fill:#ff7a59,color:#fff,stroke:#cc5e47,stroke-width:2px
+    style STRIPE fill:#635bff,color:#fff,stroke:#4f49cc,stroke-width:2px
+    style ZAP fill:#ff4a00,color:#fff,stroke:#cc3b00,stroke-width:2px
+    style DEVOPS fill:#0078d4,color:#fff,stroke:#005a9e,stroke-width:2px
+`} />
+
+### User Signup Flow
+```
+Client (Postman / Swagger)
+    ↓
+ASP.NET Core API (Create User)
+    ├── Validate and Save User to Azure SQL DB
+    └── Trigger Azure Logic App (Webhook)
+        ├── HubSpot CRM
+        │   ├── Create/Update Contact (with external_contact_id)
+        ├── Stripe (if paid plan)
+        │   └── Create Checkout Session
+        └── Zapier Webhook
+            ├── Email (SendGrid) with checkout link
+            ├── SMS (Twilio)
+            └── Slack Notification
+
+User Clicks Payment Link
+    ↓
+Stripe Checkout (Payment Complete)
+    └── ASP.NET Core API (Stripe Webhook)
+        ├── Validate Stripe Request
+        └── Update User.StripeCustomerId, User.StripeSubscriptionId in Azure SQL DB
+```
+
+### HubSpot ↔ Azure DevOps Bidirectional Sync
+```
+HubSpot Ticket Created
+    ↓
+Hubpot Workflow
+    └── Azure Logic App (Webhook)
+         └── Create Azure DevOps Issue (tagged: HubSpotTicket-{id})
+
+Azure DevOps Issue Closed
+    ↓
+Azure Logic App (Polling)
+    └── Add Note to HubSpot Ticket ("Issue resolved by developers")
+```
+
+## Design Decisions
+- Logic Apps used for long-running and fan-out workflows
+- API remains stateless and focused on validation + persistence
+- External systems isolated behind workflow boundaries
+- Bidirectional sync via tag-based linking (HubSpot ↔ DevOps)
+- Sentry integration for error tracking across all workflows

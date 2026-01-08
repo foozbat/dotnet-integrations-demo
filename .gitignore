@@ -57,3 +57,4 @@ nunit-*.xml
 Migrations/
 terraform/
 .github/workflows/terraform.yml
+node_modules/

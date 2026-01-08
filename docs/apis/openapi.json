@@ -1,0 +1,457 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "Dotnet Integrations API",
+    "description": "An Amazing Dotnet Integrations API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/users": {
+      "post": {
+        "tags": [
+          "IntegrationsDemo"
+        ],
+        "summary": "Create a new user signup",
+        "description": "Validates and stores a new user in the database, then asynchronously sends the data to an Azure Logic Apps webhook for further processing.",
+        "operationId": "CreateUserSignup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "IntegrationsDemo"
+        ],
+        "summary": "Get all users",
+        "description": "Returns a list of all users stored in the database.",
+        "operationId": "GetUsers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "patch": {
+        "tags": [
+          "IntegrationsDemo"
+        ],
+        "summary": "Update user properties",
+        "description": "Updates one or more properties of an existing user. Only provided fields will be updated.",
+        "operationId": "UpdateUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "IntegrationsDemo"
+        ],
+        "summary": "Delete a user",
+        "description": "Permanently deletes a user from the database.",
+        "operationId": "DeleteUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/webhooks/hubspot": {
+      "post": {
+        "tags": [
+          "IntegrationsDemo"
+        ],
+        "summary": "Update HubSpot Contact ID for a user",
+        "description": "Updates a user with their HubSpot contact ID using the external contact ID for mapping.",
+        "operationId": "UpdateHubspotContactId",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HubspotWebhookEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/webhooks/stripe": {
+      "post": {
+        "tags": [
+          "IntegrationsDemo"
+        ],
+        "summary": "Handle Stripe checkout completion",
+        "description": "Receives Stripe webhook when a checkout session completes and updates the user with customer ID.",
+        "operationId": "StripeCheckoutCompleted",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/webhooks/logic-app-error": {
+      "post": {
+        "tags": [
+          "IntegrationsDemo"
+        ],
+        "summary": "Receive Logic App error notifications",
+        "description": "Logs any errors from Azure Logic Apps workflow to Sentry with full action details",
+        "operationId": "LogicAppError",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogicAppError"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActionResult": {
+        "required": [
+          "name",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorInfo"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErrorInfo": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "HubspotWebhookEvent": {
+        "type": "object",
+        "properties": {
+          "externalContactId": {
+            "type": "string",
+            "nullable": true
+          },
+          "hubspotContactId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LogicAppError": {
+        "required": [
+          "workflowName",
+          "workflowRunId"
+        ],
+        "type": "object",
+        "properties": {
+          "workflowRunId": {
+            "type": "string",
+            "nullable": true
+          },
+          "workflowName": {
+            "type": "string",
+            "nullable": true
+          },
+          "triggerTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "triggerData": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          },
+          "errorDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActionResult"
+            },
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "User": {
+        "required": [
+          "email",
+          "firstName",
+          "lastName",
+          "phone"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firstName": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "lastName": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "phone": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "contactId": {
+            "maxLength": 100,
+            "type": "string",
+            "nullable": true
+          },
+          "hubspotContactId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "stripeCustomerId": {
+            "maxLength": 100,
+            "type": "string",
+            "nullable": true
+          },
+          "plan": {
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "subscriptionStatus": {
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserCreateRequest": {
+        "required": [
+          "email",
+          "firstName",
+          "lastName",
+          "phone"
+        ],
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "lastName": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "phone": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "plan": {
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "maxLength": 200,
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "maxLength": 200,
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "maxLength": 200,
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "phone": {
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "plan": {
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "hubspotContactId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "IntegrationsDemo"
+    }
+  ]
+}

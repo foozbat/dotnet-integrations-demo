@@ -1,0 +1,73 @@
+---
+title: Azure Resources
+---
+
+This project uses the following Azure services deployed to the **Central US** region.
+
+## Compute & Hosting
+
+### App Service
+**Resource:** `integrations-demo-api`  
+Hosts the .NET 10 Web API on ubuntu-latest with a managed runtime.
+
+**App Service Plan:** `integrations-demo-appsvcplan`  
+Defines compute resources and pricing tier for the App Service.
+
+## API Management
+
+### API Management Service
+**Resource:** `integrations-demo-apim`  
+Provides API gateway, authentication, rate limiting, and developer portal for external API consumers.
+
+## Data & Storage
+
+### SQL Server
+**Resource:** `integrations-demo-fzb-sql`  
+Managed SQL Server instance with automatic backups and high availability.
+
+**Database:** `leads`
+Stores user records with contact mappings, and subscription data.
+
+## Security
+
+### Key Vault
+**Resource:** `integrations-demo-vault`  
+Securely stores secrets including:
+- Database connection strings
+- API keys (HubSpot, Stripe, Zapier)
+- Webhook secrets
+- Sentry DSN
+
+Access controlled via Managed Identity and Azure RBAC.
+
+## Workflow Automation
+
+### Logic Apps
+
+**`integrations-demo-la-api-to-services`**  
+Orchestrates multi-service workflow for user signups:
+- Creates HubSpot contacts
+- Updates app user data via API
+- Generates Stripe checkout sessions
+- Triggers Zapier notifications (email, SMS, Slack)
+
+**`integrations-demo-la-hubspot-to-devops`**  
+Real-time webhook-driven sync: creates Azure DevOps work items from HubSpot support tickets.
+
+**`integrations-demo-la-devops-to-hubspot`**  
+Polling-based sync: updates HubSpot tickets when DevOps issues are resolved.
+
+## Resource Group
+
+All resources are organized in a single resource group for simplified management and cost tracking.
+
+**Region:** Central US  
+**Deployment:** Infrastructure as Code via ARM templates in `logic-app-templates/`
+
+## Cost Optimization
+
+- **App Service:** Free tier suitable for demos, scale up for production
+- **SQL Database:** Free tier with auto-pause when idle
+- **Logic Apps:** Pay-per-execution model (avg $0.125/month for 1K signups)
+- **Key Vault:** Standard tier with secrets-only usage
+- **APIM:** Consumption tier for cost-effective API management
