@@ -118,7 +118,7 @@ app.Use(async (context, next) =>
         ILogger<Program> logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
         logger.LogInformation("Raw request to {Method} {Path}: {Body}",
             context.Request.Method,
-            context.Request.Path,
+            context.Request.Path.ToString(),
             body);
     }
     await next();
@@ -130,7 +130,7 @@ app.Use(async (context, next) =>
     SentrySdk.ConfigureScope(scope =>
     {
         scope.SetTag("correlation_id", context.TraceIdentifier);
-        scope.SetTag("endpoint", context.Request.Path.Value ?? "/");
+        scope.SetTag("endpoint", context.Request.Path.ToString());
     });
     await next();
 });
@@ -447,6 +447,41 @@ app.MapPost("/webhooks/logic-app-error", async (LogicAppError errorData, ILogger
 .WithName("LogicAppError")
 .WithSummary("Receive Logic App error notifications")
 .WithDescription("Logs any errors from Azure Logic Apps workflow to Sentry with full action details")
+.Produces(200);
+
+// Endpoint: POST /webhooks/zapier-error
+// Receives error notifications from Zapier for any zap failure
+app.MapPost("/webhooks/zapier-error", async (ZapierError errorData, ILogger<Program> logger) =>
+{
+    logger.LogError("Zapier zap error - ZapId: {ZapId}, StepId: {StepId}, RunId: {RunId}", 
+        errorData.ZapId, errorData.StepId, errorData.RunId);
+
+    SentrySdk.CaptureMessage(
+        $"Zapier Zap Failed: {errorData.ZapId}",
+        scope =>
+        {
+            scope.Level = SentryLevel.Error;
+            scope.SetTag("integration", "zapier");
+            scope.SetTag("zap_id", errorData.ZapId);
+            scope.SetTag("step_id", errorData.StepId);
+            scope.SetTag("run_id", errorData.RunId);
+
+            scope.SetExtra("zapier_error", System.Text.Json.JsonSerializer.Serialize(errorData));
+            scope.SetExtra("error_details", System.Text.Json.JsonSerializer.Serialize(errorData.Error));
+
+            SentrySdk.AddBreadcrumb(
+                $"Zap Step: {errorData.StepId} - Failed",
+                "workflow",
+                level: BreadcrumbLevel.Error
+            );
+        }
+    );
+
+    return Results.Ok(new { Message = "Error logged to Sentry", errorData.ZapId, errorData.RunId });
+})
+.WithName("ZapierError")
+.WithSummary("Receive Zapier error notifications")
+.WithDescription("Logs any errors from Zapier zap execution to Sentry with full error details")
 .Produces(200);
 
 /**
