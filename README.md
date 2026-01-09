@@ -121,47 +121,7 @@ Azure Logic App (Polling)
 ![Zapier Workflow](screenshots/zapier-workflow.jpg)
 </details>
 
-## Quick Start
-
-### API Endpoints
-
-**User Signup:**
-```http
-POST /api/users
-Content-Type: application/json
-
-{
-  "firstName": "Demo",
-  "lastName": "User",
-  "email": "demo.user@acme.com",
-  "phone": "555-456-7890",
-  "plan": "paid"
-}
-```
-
-**Logic App Error Reporting:**
-```http
-POST /webhooks/logic-apps/error
-Content-Type: application/json
-
-{
-  "workflowRunId": "08585375681612345678",
-  "workflowName": "hubspot-to-devops",
-  "errorDetails": [...]
-}
-```
-
-### Logic App Templates
-
-Three ARM templates available in `logic-app-templates/`:
-- **api-to-hubspot-stripe-zapier** - User signup orchestration
-- **hubspot-to-devops** - Creates DevOps issues from HubSpot tickets
-- **devops-to-hubspot** - Syncs DevOps status back to HubSpot
-
-See individual README files for deployment instructions.
-
 ## Future Enhancements
-- Add authentication using Azure API Management
+- Expand DevOps sync to handle more ticket states
 - Implement retry policies with exponential backoff
 - Add rate limiting and request throttling
-- Expand DevOps sync to handle more ticket states
