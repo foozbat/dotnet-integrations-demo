@@ -14,5 +14,5 @@ public class ZapierError
     public required string RunId { get; set; }
 
     [JsonPropertyName("error")]
-    public Dictionary<string, object>? Error { get; set; }
+    public required string Error { get; set; }
 }

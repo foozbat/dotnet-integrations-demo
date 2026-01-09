@@ -453,7 +453,7 @@ app.MapPost("/webhooks/logic-app-error", async (LogicAppError errorData, ILogger
 // Receives error notifications from Zapier for any zap failure
 app.MapPost("/webhooks/zapier-error", async (ZapierError errorData, ILogger<Program> logger) =>
 {
-    logger.LogError("Zapier zap error - ZapId: {ZapId}, StepId: {StepId}, RunId: {RunId}", 
+    logger.LogError("Zapier zap error - ZapId: {ZapId}, StepId: {StepId}, RunId: {RunId}",
         errorData.ZapId, errorData.StepId, errorData.RunId);
 
     SentrySdk.CaptureMessage(
