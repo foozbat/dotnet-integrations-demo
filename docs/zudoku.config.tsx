@@ -37,7 +37,8 @@ const config: ZudokuConfig = {
           label: "Integrations",
           icon: "workflow",
           items: [
-            "/api-to-services"
+            "/api-to-services",
+            "/hubspot-integration"
           ],
         },
         {

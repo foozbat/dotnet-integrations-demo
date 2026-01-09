@@ -1,0 +1,226 @@
+---
+title: HubSpot Integration
+---
+
+This project integrates with HubSpot CRM for contact management and support ticket workflows. HubSpot serves as the central customer relationship platform, syncing with both the API and Azure DevOps for seamless customer support operations.
+
+## Overview
+
+HubSpot is used in three key integration scenarios:
+
+1. **Contact Management** - Bidirectional sync with API user records (see [API-to-Services Integration](/api-to-services))
+2. **Support Ticket Automation** - Forward tickets to Azure DevOps work items
+3. **Customer Communication** - Trigger notifications via Zapier webhooks
+
+## Support Ticket Workflows
+
+### HubSpot → Azure DevOps Sync
+
+Real-time webhook-driven integration that creates DevOps work items from HubSpot support tickets.
+
+![HubSpot Workflow](../../screenshots/hubspot-workflow.jpg)
+
+![HubSpot to DevOps Logic App](../../screenshots/logicapp-hubspot-to-devops.jpg)
+
+**Trigger:** HubSpot Workflow webhook  
+**Action:** Create Azure DevOps work item  
+**Tag:** `HubSpotTicket-{id}` for reverse lookup
+
+#### HubSpot Workflow Configuration
+
+1. **Create HubSpot Workflow:**
+   - Navigate to Automation → Workflows
+   - Create workflow from scratch
+   - Trigger: "Ticket is created" or "Ticket enters stage"
+
+2. **Add Webhook Action:**
+   - Action: "Send webhook"
+   - Webhook URL: Your Logic App trigger URL
+   - Method: POST
+   - Headers:
+     - `Content-Type: application/json`
+     - `X-Correlation-Id: {{workflow.workflowId}}-{{workflow.executionId}}`
+
+3. **Webhook Payload:**
+```json
+{
+  "subject": "{{ticket.subject}}",
+  "content": "{{ticket.content}}",
+  "createdate": "{{ticket.createdate}}",
+  "hs_ticket_id": {{ticket.hs_ticket_id}},
+  "hs_pipeline_stage": {{ticket.hs_pipeline_stage}},
+  "hs_lastactivitydate": "{{ticket.hs_lastactivitydate}}",
+  "hs_ticket_priority": "{{ticket.hs_ticket_priority}}"
+}
+```
+
+#### Logic App Processing
+
+1. **Receives webhook** from HubSpot
+2. **Parses ticket data** using JSON schema
+3. **Routes based on pipeline stage**:
+   - New tickets → Create DevOps work item
+   - Closed tickets → Skip (already resolved)
+4. **Creates work item** with tag `HubSpotTicket-{ticket_id}`
+5. **Returns 200 OK** to HubSpot
+
+#### DevOps Work Item Mapping
+
+| HubSpot Field | DevOps Field | Notes |
+|--------------|--------------|-------|
+| `subject` | `System.Title` | Work item title |
+| `content` | `System.Description` | Full ticket description |
+| `hs_ticket_id` | Tags | Formatted as `HubSpotTicket-{id}` |
+| `hs_ticket_priority` | `Microsoft.VSTS.Common.Priority` | Mapped: High=1, Medium=2, Low=3 |
+| `createdate` | Custom field | Reference timestamp |
+
+### Azure DevOps → HubSpot Sync
+
+Polling-based integration that updates HubSpot tickets when DevOps issues are resolved.
+
+![DevOps to HubSpot Logic App](../../screenshots/logicapp-devops-to-hubspot.jpg)
+
+**Trigger:** Recurrence (every 15 minutes)  
+**Action:** Add note to HubSpot ticket  
+**Lookup:** Query DevOps by tag `HubSpotTicket-{id}`
+
+#### Logic App Processing
+
+1. **Polls Azure DevOps** every 15 minutes
+2. **Queries for closed work items** with `HubSpotTicket-` tags
+3. **Extracts HubSpot ticket ID** from tag
+4. **Adds engagement note** to HubSpot ticket:
+   - Type: Note
+   - Content: "Issue resolved by developers"
+   - Timestamp: Current time
+5. **Updates work item** to prevent duplicate processing
+
+#### HubSpot Note API Example
+
+```bash
+curl -X POST 'https://api.hubapi.com/crm/v3/objects/notes' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "properties": {
+      "hs_note_body": "Azure DevOps Issue #1234 has been resolved by the development team.",
+      "hs_timestamp": "2026-01-08T12:00:00Z"
+    },
+    "associations": [
+      {
+        "to": {
+          "id": "789456"
+        },
+        "types": [
+          {
+            "associationCategory": "HUBSPOT_DEFINED",
+            "associationTypeId": 214
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+**Association Type 214** = Note to Ticket
+
+## Authentication & Security
+
+### Private App Access Token
+
+HubSpot uses private app access tokens for API authentication:
+
+1. **Create Private App:**
+   - Navigate to Settings → Integrations → Private Apps
+   - Click "Create a private app"
+   - Name: "Integrations Demo API"
+   - Description: "API and Logic Apps integration"
+
+2. **Configure Scopes:**
+   - `crm.objects.contacts.read`
+   - `crm.objects.contacts.write`
+   - `crm.schemas.contacts.read`
+   - `tickets` (read and write)
+   - `crm.objects.notes.write`
+
+3. **Generate Token:**
+   - Click "Create app"
+   - Copy the access token (starts with `pat-na1-...`)
+   - Store in Azure Key Vault as `hubspot-api-access-token`
+
+### Key Vault Storage
+
+**Secret Name:** `hubspot-api-access-token`  
+**Format:** `pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`  
+**Access:** Logic Apps via managed identity
+
+**Key Vault Access Policy:**
+- Principal: Logic App managed identity
+- Permissions: Get, List
+
+## Rate Limits
+
+HubSpot API has the following rate limits:
+
+| Tier | Requests per 10 seconds |
+|------|-------------------------|
+| Free | 100 |
+| Starter | 100 |
+| Professional | 150 |
+| Enterprise | 200 |
+
+**Best Practices:**
+- Implement exponential backoff for 429 errors
+- Batch operations when possible
+- Use `hs_object_id` for direct lookups (no search query cost)
+- Cache contact lookups for short periods (5-10 minutes)
+
+## Testing
+
+### Test Ticket Workflow
+
+1. **Create Test Ticket in HubSpot:**
+   - Navigate to Service → Tickets
+   - Create new ticket
+   - Subject: "Test Integration Ticket"
+   - Pipeline: Support Pipeline
+
+2. **Verify DevOps Work Item:**
+   - Navigate to Azure DevOps → Boards → Work Items
+   - Search for "Test Integration Ticket"
+   - Verify tag: `HubSpotTicket-{id}`
+
+3. **Close DevOps Work Item:**
+   - Mark work item as "Done"
+   - Wait 15 minutes for polling trigger
+
+4. **Verify HubSpot Note:**
+   - Return to HubSpot ticket
+   - Check Activity feed for note: "Issue resolved by developers"
+
+## Troubleshooting
+
+### Common Issues
+
+**401 Unauthorized:**
+- Verify private app access token is valid
+- Check token hasn't expired or been regenerated
+- Ensure correct scopes are enabled
+
+**Webhook Not Triggering:**
+- Verify HubSpot workflow is active
+- Check webhook URL is correct
+- Test webhook manually from HubSpot
+- Review HubSpot workflow execution history
+
+**Rate Limit Errors (429):**
+- Implement exponential backoff
+- Reduce request frequency
+- Consider upgrading HubSpot tier
+- Batch operations when possible
+
+## Related Documentation
+
+- [API-to-Services Integration](/api-to-services) - Full signup workflow with HubSpot
+- [Azure Resources](/azure-resources) - Logic Apps and Key Vault configuration
+- [API Reference](/api) - User endpoints and webhook handlers
