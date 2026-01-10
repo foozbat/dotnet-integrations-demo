@@ -394,59 +394,57 @@ app.MapPost("/webhooks/stripe", async (HttpContext context, AzureSQLDbContext db
 .Produces(404);
 
 // Endpoint: POST /webhooks/logic-app-error
-// Receives error notifications from Azure Logic Apps for any workflow failure
+// Receives error notifications from Azure Logic Apps for failed workflows
 app.MapPost("/webhooks/logic-app-error", async (LogicAppError errorData, ILogger<Program> logger) =>
 {
-    logger.LogError("Logic App workflow error: {@errorData}", errorData);
-
-    // Parse the scope results to find failed actions
-    List<ActionResult> failedActions = errorData.ErrorDetails?
+    // Find failed actions
+    List<WorkflowAction> failedActions = errorData.ErrorDetails?
         .Where(action => action.Status is "Failed" or "TimedOut")
         .ToList() ?? [];
 
     var failedActionNames = string.Join(", ", failedActions.Select(a => a.Name));
 
-    SentrySdk.CaptureMessage(
-        $"Azure Logic App Workflow Failed: {failedActionNames}",
-        scope =>
+    logger.LogError("Logic App workflow failed - Workflow: {WorkflowName}, Run: {RunId}, Failed Actions: {FailedActions}",
+        errorData.WorkflowName, errorData.WorkflowRunId, failedActionNames);
+
+    SentrySdk.ConfigureScope(scope =>
+    {
+        scope.SetTag("integration", "azure-logic-apps");
+        scope.SetTag("workflow_name", errorData.WorkflowName);
+        scope.SetTag("workflow_run_id", errorData.WorkflowRunId);
+        scope.SetTag("failed_actions", failedActionNames);
+
+        scope.SetExtra("trigger_time", errorData.TriggerTime.ToString("o"));
+        scope.SetExtra("trigger_data", System.Text.Json.JsonSerializer.Serialize(errorData.TriggerData));
+        scope.SetExtra("failed_action_details", System.Text.Json.JsonSerializer.Serialize(failedActions));
+
+        // Add breadcrumb for each failed action
+        foreach (WorkflowAction action in failedActions)
         {
-            scope.Level = SentryLevel.Error;
-            scope.SetTag("integration", "azure-logic-apps");
-            scope.SetTag("workflow_name", errorData.WorkflowName);
-            scope.SetTag("workflow_run_id", errorData.WorkflowRunId);
-            scope.SetTag("failed_actions", failedActionNames);
-
-            scope.SetExtra("trigger_time", errorData.TriggerTime.ToString("o"));
-            scope.SetExtra("trigger_data", System.Text.Json.JsonSerializer.Serialize(errorData.TriggerData));
-            scope.SetExtra("all_action_results", System.Text.Json.JsonSerializer.Serialize(errorData.ErrorDetails));
-
-            // Add breadcrumbs for each action in the workflow
-            foreach (ActionResult action in errorData.ErrorDetails ?? Enumerable.Empty<ActionResult>())
-            {
-                BreadcrumbLevel level = action.Status == "Succeeded"
-                    ? BreadcrumbLevel.Info
-                    : BreadcrumbLevel.Error;
-
-                SentrySdk.AddBreadcrumb(
-                    $"Action: {action.Name} - {action.Status}",
-                    "workflow",
-                    level: level
-                );
-            }
-
-            // Set user context if email is present in trigger data
-            if (errorData.TriggerData?.TryGetValue("email", out var email) == true)
-            {
-                scope.User = new SentryUser { Email = email?.ToString() };
-            }
+            SentrySdk.AddBreadcrumb(
+                $"Failed Action: {action.Name} (Code: {action.Code ?? "N/A"})",
+                "workflow",
+                level: BreadcrumbLevel.Error
+            );
         }
+
+        // Set user context if email is present in trigger data
+        if (errorData.TriggerData?.TryGetValue("Email", out var email) == true)
+        {
+            scope.User = new SentryUser { Email = email?.ToString() };
+        }
+    });
+
+    SentrySdk.CaptureMessage(
+        $"Azure Logic App Workflow Failed: {errorData.WorkflowName}",
+        SentryLevel.Error
     );
 
-    return Results.Ok(new { Message = "Error logged to Sentry", FailedActions = failedActionNames });
+    return Results.Ok(new { Message = "Workflow error logged to Sentry", FailedActions = failedActionNames });
 })
 .WithName("LogicAppError")
 .WithSummary("Receive Logic App error notifications")
-.WithDescription("Logs any errors from Azure Logic Apps workflow to Sentry with full action details")
+.WithDescription("Logs failed Azure Logic Apps workflows to Sentry with failed action details")
 .Produces(200);
 
 // Endpoint: POST /webhooks/zapier-error
@@ -456,25 +454,26 @@ app.MapPost("/webhooks/zapier-error", async (ZapierError errorData, ILogger<Prog
     logger.LogError("Zapier zap error - ZapId: {ZapId}, StepId: {StepId}, RunId: {RunId}",
         errorData.ZapId, errorData.StepId, errorData.RunId);
 
+    SentrySdk.ConfigureScope(scope =>
+    {
+        scope.SetTag("integration", "zapier");
+        scope.SetTag("zap_id", errorData.ZapId);
+        scope.SetTag("step_id", errorData.StepId);
+        scope.SetTag("run_id", errorData.RunId);
+
+        scope.SetExtra("zapier_error", System.Text.Json.JsonSerializer.Serialize(errorData));
+        scope.SetExtra("error_details", errorData.Error);
+
+        SentrySdk.AddBreadcrumb(
+            $"Zap Step: {errorData.StepId} - Failed",
+            "workflow",
+            level: BreadcrumbLevel.Error
+        );
+    });
+
     SentrySdk.CaptureMessage(
         $"Zapier Zap Failed: {errorData.ZapId}",
-        scope =>
-        {
-            scope.Level = SentryLevel.Error;
-            scope.SetTag("integration", "zapier");
-            scope.SetTag("zap_id", errorData.ZapId);
-            scope.SetTag("step_id", errorData.StepId);
-            scope.SetTag("run_id", errorData.RunId);
-
-            scope.SetExtra("zapier_error", System.Text.Json.JsonSerializer.Serialize(errorData));
-            scope.SetExtra("error_details", System.Text.Json.JsonSerializer.Serialize(errorData.Error));
-
-            SentrySdk.AddBreadcrumb(
-                $"Zap Step: {errorData.StepId} - Failed",
-                "workflow",
-                level: BreadcrumbLevel.Error
-            );
-        }
+        SentryLevel.Error
     );
 
     return Results.Ok(new { Message = "Error logged to Sentry", errorData.ZapId, errorData.RunId });
